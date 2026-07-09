@@ -1,26 +1,44 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Sidebar } from '../components/Sidebar';
-import { ChatArea } from '../components/ChatArea';
-import { ItemsArea } from '../components/ItemsArea';
-import { InboxArea, Notification } from '../components/InboxArea';
-import { UserProfileModal } from '../components/UserProfileModal';
-import { ChannelSettingsModal } from '../components/ChannelSettingsModal';
-import { WorkspaceMembersModal } from '../components/WorkspaceMembersModal';
-import { StartDmModal } from '../components/StartDmModal';
-import { CreateWorkspaceModal } from '../components/CreateWorkspaceModal';
-import { CreateChannelModal } from '../components/CreateChannelModal';
-import { BrowseChannelsModal } from '../components/BrowseChannelsModal';
-import { DocumentPanel } from '../components/DocumentPanel';
-import { MediaLibraryArea } from '../components/MediaLibraryArea';
-import { DashboardArea, DashboardTask, DashboardActivity } from '../components/DashboardArea';
-import { useChat, Message, User } from '../hooks/useChat';
-import { SearchView } from '../components/SearchView';
-import { usePolling } from '../hooks/usePolling';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useChat, Message, User } from './useChat';
+import { usePolling } from './usePolling';
 import { apiClient } from '../utils/apiClient';
-
 import { useLanguage } from '../utils/i18n';
 
-interface ChatPageProps {
+interface Channel {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  description?: string;
+  type?: string;
+  groupId?: string | null;
+  updatedAt?: string | null;
+  unreadCount?: number;
+}
+
+interface Workspace {
+  id: string;
+  name: string;
+  custom_statuses?: string;
+}
+
+interface Notification {
+  id: string;
+  workspaceId: string;
+  senderId?: string | null;
+  type: string;
+  title: string;
+  content: string;
+  linkUrl?: string | null;
+  isRead: number;
+  isArchived: number;
+  createdAt: string;
+  sender?: {
+    displayName: string;
+    avatarUrl?: string | null;
+  } | null;
+}
+
+interface UseChatPageStateProps {
   currentUser: {
     id: string;
     displayName: string;
@@ -34,31 +52,13 @@ interface ChatPageProps {
   onUpdateUser: (displayName: string, avatarUrl: string | null, language: string) => void;
 }
 
-interface Channel {
-  id: string;
-  name: string;
-  isPrivate: boolean;
-  description?: string;
-  type?: string;
-  groupId?: string | null;
-  updatedAt?: string | null;
-  unreadCount?: number;
-  isStarred?: boolean;
-}
-
-interface Workspace {
-  id: string;
-  name: string;
-  custom_statuses?: string;
-}
-
-export const ChatPage: React.FC<ChatPageProps> = ({
+export const useChatPageState = ({
   currentUser,
   initialWorkspaceId,
   initialChannelId,
   onLogout,
   onUpdateUser,
-}) => {
+}: UseChatPageStateProps) => {
   const { t } = useLanguage();
 
   // localStorageから全チャンネルの最終閲覧日時をJSON文字列として取得するヘルパー
@@ -76,6 +76,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
     return JSON.stringify(lastReads);
   }, [currentUser.id]);
+
   // ログインユーザーのワークスペースにおけるロール
   const [currentUserRole, setCurrentUserRole] = useState<'owner' | 'group_admin' | 'member' | 'guest'>('member');
   const [currentUserLedGroups, setCurrentUserLedGroups] = useState<string[]>([]);
@@ -87,18 +88,18 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(() => {
     return localStorage.getItem(`cospace_last_workspace_${currentUser.id}`) || initialWorkspaceId;
   });
-  const [activeView, setActiveView] = useState<'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search'>(() => {
+  const [activeView, setActiveView] = useState<'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings'>(() => {
     const saved = localStorage.getItem(`cospace_last_view_${currentUser.id}`);
-    const validViews = ['dashboard', 'chat', 'items', 'inbox', 'workspace_doc', 'media', 'workspace_settings', 'search'];
+    const validViews = ['dashboard', 'chat', 'items', 'inbox', 'workspace_doc', 'media', 'workspace_settings'];
     if (saved && validViews.includes(saved)) {
       return saved as any;
     }
     return 'dashboard';
   });
 
-  // ダッシュボード用ステートと取得関数
-  const [dashboardTasks, setDashboardTasks] = useState<DashboardTask[]>([]);
-  const [dashboardActivities, setDashboardActivities] = useState<DashboardActivity[]>([]);
+  // ダッシュボード用ステート
+  const [dashboardTasks, setDashboardTasks] = useState<any[]>([]);
+  const [dashboardActivities, setDashboardActivities] = useState<any[]>([]);
   const [loadingDashboard, setLoadingDashboard] = useState<boolean>(false);
 
   const loadDashboardData = useCallback(async (silent = false) => {
@@ -106,8 +107,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     if (!silent) setLoadingDashboard(true);
     try {
       const [tasksRes, actRes] = await Promise.all([
-        apiClient.get<{ success: boolean; data: DashboardTask[] }>('/api/items'),
-        apiClient.get<{ success: boolean; data: DashboardActivity[] }>('/api/activities'),
+        apiClient.get<{ success: boolean; data: any[] }>('/api/items'),
+        apiClient.get<{ success: boolean; data: any[] }>('/api/activities'),
       ]);
       if (tasksRes.success && Array.isArray(tasksRes.data)) {
         setDashboardTasks(tasksRes.data);
@@ -151,35 +152,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const [isBrowseChannelsOpen, setIsBrowseChannelsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
-
-  // 全文検索で指定メッセージへジャンプするためのステート
-  const [targetScrollMessageId, setTargetScrollMessageId] = useState<string | null>(null);
-
-  // カスタム絵文字リスト
-  const [customEmojis, setCustomEmojis] = useState<any[]>([]);
-
-  const fetchCustomEmojis = useCallback(async (wsId: string) => {
-    try {
-      const res = await apiClient.get<{ success: boolean; data: any[] }>(
-        `/api/workspaces/${wsId}/emojis`
-      );
-      if (res.success && Array.isArray(res.data)) {
-        setCustomEmojis(res.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch custom emojis:', err);
-    }
-  }, []);
-
-  // 検索結果のメッセージをクリックした時のジャンプ処理
-  const handleJumpToMessage = useCallback(async (channelId: string, messageId: string) => {
-    if (activeChannelId !== channelId) {
-      setActiveChannelId(channelId);
-    }
-    setActiveView('chat');
-    setTargetScrollMessageId(messageId);
-  }, [activeChannelId]);
-
 
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([]);
   const [channelMembers, setChannelMembers] = useState<any[]>([]);
@@ -262,7 +234,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     deleteFailedMessage,
     setFetchedMessages,
     toggleLocalReaction,
-    toggleLocalPin,
   } = useChat({
     channelId: activeChannelId || '',
     currentUser: chatUser,
@@ -380,8 +351,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   useEffect(() => {
     if (!activeWorkspaceId) return;
 
-    fetchCustomEmojis(activeWorkspaceId);
-
     const loadChannelsAndMembers = async () => {
       try {
         const chanResponse = await apiClient.get<{ success: boolean; data: Channel[] }>(
@@ -421,7 +390,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     fetchUserRole(activeWorkspaceId);
     loadChannelsAndMembers();
     fetchWorkspaceDoc(activeWorkspaceId);
-  }, [activeWorkspaceId, fetchUserRole, fetchWorkspaceDoc]);
+  }, [activeWorkspaceId, fetchUserRole, fetchWorkspaceDoc, currentUser.id]);
 
   // チャンネルメンバー取得関数
   const fetchChannelMembers = useCallback(async (channelId: string) => {
@@ -470,6 +439,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       console.error('Failed to load notifications:', err);
     }
   }, [inboxFilter, currentUserRole]);
+
+  // フィルター変更時に通知を自動ロード
+  useEffect(() => {
+    loadNotifications(inboxFilter);
+  }, [inboxFilter, loadNotifications]);
 
   // 通知既読化API
   const handleReadNotification = async (id: string) => {
@@ -548,7 +522,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       }
       const lastRead = localStorage.getItem(`last_view_chan_${currentUser.id}_${c.id}`);
       if (!lastRead) {
-        unreads[c.id] = false; // 初期状態では未読にしない（ノイズ防止）
+        unreads[c.id] = false;
       } else if (c.updatedAt) {
         unreads[c.id] = new Date(c.updatedAt) > new Date(lastRead);
       } else {
@@ -560,10 +534,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   // 定期的な通知およびチャンネル情報のリロード（ポーリング）
   useEffect(() => {
-    // 起動時 / 画面切り替え時に最新の通知を取得
     loadNotifications();
 
-    // ホーム画面を開いたときは、その瞬間の最新データをロードする
     if (activeView === 'dashboard') {
       loadDashboardData(false);
     }
@@ -581,11 +553,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     pollWorkspaces();
 
     const interval = setInterval(() => {
-      // 通知のみ定期的にポーリングする（リアルタイム性が必要なため）
       loadNotifications();
 
       if (activeWorkspaceId) {
-        // チャンネル一覧も裏で再フェッチして未読状態（updatedAt）を検出する
         apiClient.get<{ success: boolean; data: Channel[] }>(
           `/api/workspaces/${activeWorkspaceId}/channels`,
           { last_reads: getLastReadsParam() }
@@ -595,12 +565,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           }
         }).catch((err) => console.error('Failed to poll channels:', err));
       }
-    }, 10000); // 10秒おき
+    }, 10000);
 
     return () => clearInterval(interval);
   }, [activeWorkspaceId, activeView, loadNotifications, loadDashboardData]);
 
-  // タブのタイトルを動的に更新（未読通知がある場合は件数を表示）
+  // タブのタイトルを動的に更新
   useEffect(() => {
     const defaultTitle = 'cospace';
     if (unreadNotificationsCount > 0) {
@@ -616,7 +586,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       setActiveWorkspaceId(targetWorkspaceId);
     }
 
-    // 1. チャットへの遷移: /channels/:channelId?msg=:msgId
     const chanMatch = linkUrl.match(/\/channels\/([^\/\?]+)/);
     if (chanMatch) {
       const channelId = chanMatch[1];
@@ -638,12 +607,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       return;
     }
 
-    // 2. タスクへの遷移: /items?item=:itemId
     const itemMatch = linkUrl.match(/\/items\?item=([^\&\s]+)/);
     if (itemMatch) {
       const itemId = itemMatch[1];
       setActiveView('items');
-      setJumpItemId(itemId); // ItemsAreaでモーダルを開かせる
+      setJumpItemId(itemId);
       return;
     }
   };
@@ -652,8 +620,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     setActiveWorkspaceId(workspaceId);
     setActiveView('chat');
   };
-
-  // ------------------------------------------------------------
 
   const handleCreateWorkspace = useCallback(async (name: string) => {
     const response = await apiClient.post<{
@@ -682,7 +648,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   }, [activeWorkspaceId]);
 
-  // 絵文字リアクションのトグル処理
   const handleToggleReaction = useCallback(async (messageId: string, emoji: string) => {
     toggleLocalReaction(messageId, emoji, chatUser);
 
@@ -694,7 +659,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   }, [toggleLocalReaction, chatUser]);
 
-  // 設定更新関連ハンドラー
   const handleUpdateProfile = async (displayName: string, avatarUrl: string | null, language: string) => {
     const res = await apiClient.put<{ success: boolean }>('/api/users/me', { displayName, avatarUrl, language });
     if (res.success) {
@@ -768,20 +732,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   };
 
-  const handleToggleStarChannel = async (channelId: string, currentStarred: boolean) => {
-    try {
-      const action = currentStarred ? 'unstar' : 'star';
-      const res = await apiClient.post<{ success: boolean }>(`/api/channels/${channelId}/${action}`);
-      if (res.success) {
-        setChannels(prev => prev.map(c => 
-          c.id === channelId ? { ...c, isStarred: !currentStarred } : c
-        ));
-      }
-    } catch (err: any) {
-      alert((t('error') === 'Error' ? 'Failed to toggle star: ' : 'お気に入りのトグルに失敗しました: ') + (err.message || err));
-    }
-  };
-
   const handleDeleteChannel = async () => {
     if (!selectedChannelToEdit) return;
     const res = await apiClient.delete<{ success: boolean }>(`/api/channels/${selectedChannelToEdit.id}`);
@@ -841,227 +791,69 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) || null;
   const activeChannel = channels.find((c) => c.id === activeChannelId) || null;
 
-  return (
-    <div className="app-container">
-      {/* 左サイドバー */}
-      <Sidebar
-        onToggleStarChannel={handleToggleStarChannel}
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        setActiveWorkspaceId={(id) => {
-          setActiveWorkspaceId(id);
-        }}
-        channels={channels}
-        activeChannelId={activeChannelId}
-        setActiveChannelId={(id) => {
-          setActiveChannelId(id);
-        }}
-        activeView={activeView}
-        setActiveView={(view) => {
-          setActiveView(view);
-        }}
-        unreadNotificationsCount={unreadNotificationsCount}
-        channelUnreads={channelUnreads}
-        currentUser={currentUser}
-        currentUserRole={currentUserRole}
-        currentUserLedGroups={currentUserLedGroups}
-        onLogout={onLogout}
-        onOpenUserProfile={() => setIsProfileOpen(true)}
-        onOpenWorkspaceMembers={() => {
-          setActiveView('workspace_settings');
-          setActiveChannelId(null);
-        }}
-        onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
-        onOpenCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
-        onOpenCreateChannel={() => setIsCreateChannelOpen(true)}
-        onOpenBrowseChannels={() => setIsBrowseChannelsOpen(true)}
-        onOpenStartDm={() => setIsStartDmOpen(true)}
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-      />
-
-      {/* モバイルでメニュー展開時のオーバーレイ背景（タップで縮小表示に戻る） */}
-      {!isCollapsed && (
-        <div 
-          className="mobile-sidebar-overlay"
-          onClick={() => setIsCollapsed(true)}
-        />
-      )}
-
-      {/* 中央エリアの条件付きレンダリング */}
-      {activeView === 'dashboard' ? (
-        <DashboardArea
-          currentUserId={currentUser.id}
-          workspaces={workspaces}
-          tasks={dashboardTasks}
-          activities={dashboardActivities}
-          loading={loadingDashboard}
-          onSelectWorkspace={handleSelectWorkspaceFromDashboard}
-          onJumpToLink={handleJumpToLink}
-        />
-      ) : activeView === 'workspace_doc' ? (
-        <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
-          <DocumentPanel
-            title={t('error') === 'Error' ? `${activeWorkspace?.name || 'Workspace'}'s Document` : `${activeWorkspace?.name || 'ワークスペース'} のドキュメント`}
-            initialValue={workspaceDocText}
-            onSave={handleSaveWorkspaceDoc}
-            type="workspace"
-            lockKey={`workspace:${activeWorkspaceId}`}
-          />
-        </div>
-      ) : activeView === 'workspace_settings' ? (
-        <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
-          <WorkspaceMembersModal
-            workspace={activeWorkspace}
-            currentUserRole={currentUserRole}
-            currentUserLedGroups={currentUserLedGroups}
-            onUpdateWorkspace={handleUpdateWorkspace}
-            onDeleteWorkspace={handleDeleteWorkspace}
-            isEmbed={true}
-          />
-        </div>
-      ) : activeView === 'items' ? (
-        <ItemsArea
-          workspaceId={activeWorkspaceId}
-          workspace={activeWorkspace}
-          activeChannelId={activeChannelId}
-          channels={channels}
-          workspaceMembers={workspaceMembers}
-          currentUserId={currentUser.id}
-          highlightItemId={jumpItemId}
-          onClearHighlightItem={() => setJumpItemId(null)}
-        />
-      ) : activeView === 'media' ? (
-        <MediaLibraryArea
-          workspaceId={activeWorkspaceId}
-          currentUserId={currentUser.id}
-          currentUserRole={currentUserRole}
-          channels={channels}
-        />
-      ) : activeView === 'inbox' ? (
-        <InboxArea
-          workspaceId={activeWorkspaceId}
-          notifications={notifications}
-          loading={loadingNotifications}
-          filter={inboxFilter}
-          onFilterChange={(newFilter) => {
-            setInboxFilter(newFilter);
-            loadNotifications(newFilter);
-          }}
-          onReadNotification={handleReadNotification}
-          onReadAllNotifications={handleReadAllNotifications}
-          onArchiveNotification={handleArchiveNotification}
-          onJumpToLink={handleJumpToLink}
-        />
-      ) : activeView === 'search' ? (
-        <SearchView
-          workspaceId={activeWorkspaceId}
-          customEmojis={customEmojis}
-          onJumpToMessage={handleJumpToMessage}
-        />
-      ) : activeChannelId && activeChannel ? (
-        <ChatArea
-          channelName={activeChannel.type === 'dm' ? 
-            (() => {
-              const names = activeChannel.name.split(',').map(n => n.trim());
-              const filtered = names.filter(n => n !== currentUser.displayName);
-              return filtered.length > 0 ? filtered.join(', ') : activeChannel.name;
-            })() : activeChannel.name
-          }
-          channelDescription={activeChannel.description || (activeChannel.isPrivate ? (t('error') === 'Error' ? 'Private channel' : 'プライベートチャンネル') : (t('error') === 'Error' ? 'Public channel anyone can join' : '誰でも参加できるパブリックチャンネル'))}
-          messages={messages}
-          currentUserId={currentUser.id}
-          channelMembers={channelMembers}
-          workspaceMembers={workspaceMembers}
-          workspaceId={activeWorkspaceId}
-          activeChannelId={activeChannelId}
-          channels={channels}
-          onSendMessage={async (content, fileUrl, fileName, fileSize) => {
-            await sendMessage(content, replyTargetMessage?.id, fileUrl, fileName, fileSize);
-            setReplyTargetMessage(null);
-          }}
-          onRetryMessage={retryMessage}
-          onDeleteFailedMessage={deleteFailedMessage}
-          onSetReplyTarget={setReplyTargetMessage}
-          replyTargetMessage={replyTargetMessage}
-          onCancelReply={() => setReplyTargetMessage(null)}
-          onToggleReaction={handleToggleReaction}
-          onToggleLocalPin={toggleLocalPin}
-          pollingInfo={pollingInfo}
-          currentUserRole={currentUserRole}
-          workspace={activeWorkspace}
-          customEmojis={customEmojis}
-          fetchCustomEmojis={() => fetchCustomEmojis(activeWorkspaceId!)}
-          targetScrollMessageId={targetScrollMessageId}
-          clearTargetScrollMessageId={() => setTargetScrollMessageId(null)}
-          onJumpToMessage={handleJumpToMessage}
-          onSearchClick={() => {
-            setActiveView('search');
-            setActiveChannelId(null);
-          }}
-        />
-      ) : (
-        <div className="no-message-selected" style={{ flex: 1 }}>
-          <p>{t('error') === 'Error' ? 'Please select a channel or DM.' : 'チャンネルまたはDMを選択してください。'}</p>
-        </div>
-      )}
-      {/* プロフィール設定モーダル */}
-      <UserProfileModal
-        isOpen={isProfileOpen}
-        onClose={() => setIsProfileOpen(false)}
-        currentUser={currentUser}
-        onUpdateProfile={handleUpdateProfile}
-      />
-
-      {/* チャンネル設定モーダル */}
-      <ChannelSettingsModal
-        isOpen={!!selectedChannelToEdit}
-        onClose={() => setSelectedChannelToEdit(null)}
-        channel={selectedChannelToEdit}
-        currentUserRole={currentUserRole}
-        currentUserLedGroups={currentUserLedGroups}
-        currentUserId={currentUser.id}
-        workspaceMembers={workspaceMembers}
-        onUpdateChannel={handleUpdateChannel}
-        onDeleteChannel={handleDeleteChannel}
-        onLeaveChannel={handleLeaveChannel}
-        isJoined={channels.some(c => c.id === selectedChannelToEdit?.id)}
-      />
-
-      {/* DM開始メンバー選択モーダル */}
-      <StartDmModal
-        isOpen={isStartDmOpen}
-        onClose={() => setIsStartDmOpen(false)}
-        workspaceId={activeWorkspaceId}
-        currentUserId={currentUser.id}
-        onCreateDm={handleCreateDm}
-      />
-
-      {/* ワークスペース新規作成モーダル */}
-      <CreateWorkspaceModal
-        isOpen={isCreateWorkspaceOpen}
-        onClose={() => setIsCreateWorkspaceOpen(false)}
-        onCreateWorkspace={handleCreateWorkspace}
-      />
-
-      {/* チャンネル新規追加モーダル */}
-      <CreateChannelModal
-        isOpen={isCreateChannelOpen}
-        onClose={() => setIsCreateChannelOpen(false)}
-        workspaceId={activeWorkspaceId}
-        onCreateChannel={handleCreateChannel}
-      />
-
-      {/* チャンネルブラウズモーダル */}
-      <BrowseChannelsModal
-        isOpen={isBrowseChannelsOpen}
-        onClose={() => setIsBrowseChannelsOpen(false)}
-        workspaceId={activeWorkspaceId}
-        currentUserRole={currentUserRole}
-        currentUserLedGroups={currentUserLedGroups}
-        onJoinChannel={handleJoinChannel}
-        onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
-      />
-    </div>
-  );
+  return {
+    currentUserRole,
+    currentUserLedGroups,
+    workspaces,
+    activeWorkspaceId,
+    setActiveWorkspaceId,
+    activeView,
+    setActiveView,
+    dashboardTasks,
+    dashboardActivities,
+    loadingDashboard,
+    loadDashboardData,
+    channels,
+    activeChannelId,
+    setActiveChannelId,
+    notifications,
+    unreadNotificationsCount,
+    loadingNotifications,
+    channelUnreads,
+    inboxFilter,
+    setInboxFilter,
+    jumpItemId,
+    setJumpItemId,
+    replyTargetMessage,
+    setReplyTargetMessage,
+    isProfileOpen,
+    setIsProfileOpen,
+    selectedChannelToEdit,
+    setSelectedChannelToEdit,
+    isStartDmOpen,
+    setIsStartDmOpen,
+    isCreateWorkspaceOpen,
+    setIsCreateWorkspaceOpen,
+    isCreateChannelOpen,
+    setIsCreateChannelOpen,
+    isBrowseChannelsOpen,
+    setIsBrowseChannelsOpen,
+    isCollapsed,
+    setIsCollapsed,
+    workspaceMembers,
+    channelMembers,
+    workspaceDocText,
+    handleSaveWorkspaceDoc,
+    messages,
+    sendMessage,
+    retryMessage,
+    deleteFailedMessage,
+    pollingInfo,
+    handleJumpToLink,
+    handleSelectWorkspaceFromDashboard,
+    handleCreateWorkspace,
+    handleCreateChannel,
+    handleToggleReaction,
+    handleUpdateProfile,
+    handleUpdateWorkspace,
+    handleDeleteWorkspace,
+    handleUpdateChannel,
+    handleCreateDm,
+    handleDeleteChannel,
+    handleLeaveChannel,
+    handleJoinChannel,
+    activeWorkspace,
+    activeChannel,
+    loadNotifications,
+  };
 };

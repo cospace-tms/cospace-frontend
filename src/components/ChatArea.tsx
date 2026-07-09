@@ -1,12 +1,15 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Message } from '../hooks/useChat';
-import { Send, Smile, Paperclip, AlertCircle, RefreshCw, Trash2, HelpCircle, X, Loader, MessageSquare, CheckSquare, BookOpen, Menu, Image } from 'lucide-react';
+import { Send, Smile, Paperclip, AlertCircle, RefreshCw, Trash2, HelpCircle, X, Loader, MessageSquare, CheckSquare, BookOpen, Menu, Image, Pin, Search, Plus, Upload } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { CreateItemModal } from './CreateItemModal';
 import { DocumentPanel } from './DocumentPanel';
 import { ItemsArea } from './ItemsArea';
 import { MediaLibraryArea } from './MediaLibraryArea';
 import { useLanguage } from '../utils/i18n';
+import { parseMarkdownToHtml } from '../utils/markdown';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
 
 export interface Channel {
   id: string;
@@ -35,6 +38,7 @@ interface ChatAreaProps {
   replyTargetMessage: Message | null;
   onCancelReply: () => void;
   onToggleReaction: (messageId: string, emoji: string) => Promise<void>;
+  onToggleLocalPin: (messageId: string, isPinned: boolean) => void;
   pollingInfo: {
     intervalTime: number;
     isActive: boolean;
@@ -43,6 +47,12 @@ interface ChatAreaProps {
   onMenuClick?: () => void;
   currentUserRole?: 'owner' | 'group_admin' | 'member' | 'guest';
   workspace?: { id: string; name: string; custom_statuses?: string } | null;
+  customEmojis?: any[];
+  fetchCustomEmojis?: () => void;
+  targetScrollMessageId?: string | null;
+  clearTargetScrollMessageId?: () => void;
+  onJumpToMessage?: (channelId: string, messageId: string) => void;
+  onSearchClick?: () => void;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -62,14 +72,127 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   replyTargetMessage,
   onCancelReply,
   onToggleReaction,
+  onToggleLocalPin,
   pollingInfo,
   onMenuClick,
   currentUserRole = 'member',
   workspace = null,
+  customEmojis = [],
+  fetchCustomEmojis,
+  targetScrollMessageId,
+  clearTargetScrollMessageId,
+  onJumpToMessage,
+  onSearchClick,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
   const [inputText, setInputText] = useState('');
+  const isEmojiAdmin = currentUserRole === 'owner' || currentUserRole === 'group_admin';
+
+  // チャット入力用絵文字ピッカー用のステート
+  const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
+  const [showInputEmojiUploadForm, setShowInputEmojiUploadForm] = useState(false);
+  const [inputEmojiCode, setInputEmojiCode] = useState('');
+  const [inputEmojiFile, setInputEmojiFile] = useState<File | null>(null);
+  const [uploadingInputEmoji, setUploadingInputEmoji] = useState(false);
+  const inputEmojiFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // カスタム絵文字アップロードフォーム用のステート
+  const [showEmojiUploadForm, setShowEmojiUploadForm] = useState(false);
+  const [newEmojiCode, setNewEmojiCode] = useState('');
+  const [newEmojiFile, setNewEmojiFile] = useState<File | null>(null);
+  const [uploadingEmoji, setUploadingEmoji] = useState(false);
+  const emojiFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // 検索ヒット時の自動スクロール
+  useEffect(() => {
+    if (targetScrollMessageId && messages.length > 0) {
+      const exists = messages.some(m => m.id === targetScrollMessageId);
+      if (exists) {
+        scrollToMessage(targetScrollMessageId);
+        clearTargetScrollMessageId?.();
+      }
+    }
+  }, [targetScrollMessageId, messages, clearTargetScrollMessageId]);
+
+  // カスタム絵文字アップロード処理
+  const handleUploadEmoji = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmojiFile || !newEmojiCode.trim() || !workspaceId) return;
+
+    setUploadingEmoji(true);
+    const formData = new FormData();
+    formData.append('file', newEmojiFile);
+    formData.append('code', newEmojiCode);
+
+    try {
+      const res = await apiClient.post<{ success: boolean; error?: string }>(
+        `/api/workspaces/${workspaceId}/emojis`,
+        formData
+      );
+      if (res.success) {
+        setNewEmojiCode('');
+        setNewEmojiFile(null);
+        if (emojiFileInputRef.current) emojiFileInputRef.current.value = '';
+        setShowEmojiUploadForm(false);
+        fetchCustomEmojis?.();
+        alert(isEn ? 'Emoji uploaded successfully!' : '絵文字のアップロードに成功しました！');
+      } else {
+        alert((isEn ? 'Failed to upload emoji: ' : '絵文字のアップロードに失敗しました: ') + (res.error || 'Unknown error'));
+      }
+    } catch (err: any) {
+      alert((isEn ? 'Failed to upload emoji: ' : '絵文字のアップロードに失敗しました: ') + (err.message || err));
+    } finally {
+      setUploadingEmoji(false);
+    }
+  };
+
+  // チャット入力ピッカー用カスタム絵文字アップロード処理
+  const handleUploadInputEmoji = async (e?: React.FormEvent | React.MouseEvent | React.KeyboardEvent) => {
+    e?.preventDefault();
+    if (!inputEmojiFile || !inputEmojiCode.trim() || !workspaceId) return;
+
+    setUploadingInputEmoji(true);
+    const formData = new FormData();
+    formData.append('file', inputEmojiFile);
+    formData.append('code', inputEmojiCode);
+
+    try {
+      const res = await apiClient.post<{ success: boolean; error?: string }>(
+        `/api/workspaces/${workspaceId}/emojis`,
+        formData
+      );
+      if (res.success) {
+        setInputEmojiCode('');
+        setInputEmojiFile(null);
+        if (inputEmojiFileInputRef.current) inputEmojiFileInputRef.current.value = '';
+        setShowInputEmojiUploadForm(false);
+        fetchCustomEmojis?.();
+        alert(isEn ? 'Emoji uploaded successfully!' : '絵文字のアップロードに成功しました！');
+      } else {
+        alert((isEn ? 'Failed to upload emoji: ' : '絵文字のアップロードに失敗しました: ') + (res.error || 'Unknown error'));
+      }
+    } catch (err: any) {
+      alert((isEn ? 'Failed to upload emoji: ' : '絵文字のアップロードに失敗しました: ') + (err.message || err));
+    } finally {
+      setUploadingInputEmoji(false);
+    }
+  };
+
+  // カスタム絵文字テキスト置換関数
+  const replaceCustomEmojis = useCallback((htmlText: string) => {
+    if (!htmlText || !customEmojis || customEmojis.length === 0) return htmlText;
+    let result = htmlText;
+    customEmojis.forEach((emoji) => {
+      const escapedCode = emoji.code.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(escapedCode, 'g');
+      result = result.replace(
+        regex,
+        `<img src="${emoji.url}" alt="${emoji.code}" title="${emoji.code}" class="custom-emoji-inline" style="height: 22px; width: 22px; object-fit: contain; vertical-align: middle; margin: 0 2px;" />`
+      );
+    });
+    return result;
+  }, [customEmojis]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // チャンネルドキュメント用ステートと処理
@@ -82,6 +205,53 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [showMedia, setShowMedia] = useState(false);
   const [isTasksFullScreen, setIsTasksFullScreen] = useState(false);
   const [isMediaFullScreen, setIsMediaFullScreen] = useState(false);
+
+  // ピン留め関連ステート
+  const [showPins, setShowPins] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState<any[]>([]);
+  const [loadingPins, setLoadingPins] = useState(false);
+
+  const fetchPinnedMessages = useCallback(async () => {
+    if (!activeChannelId) return;
+    setLoadingPins(true);
+    try {
+      const res = await apiClient.get<{ success: boolean; data: any[] }>(
+        `/api/channels/${activeChannelId}/pins`
+      );
+      if (res.success) {
+        setPinnedMessages(res.data || []);
+      }
+    } catch (err) {
+      console.error('Failed to load pinned messages:', err);
+    } finally {
+      setLoadingPins(false);
+    }
+  }, [activeChannelId]);
+
+  useEffect(() => {
+    if (showPins && activeChannelId) {
+      fetchPinnedMessages();
+    }
+  }, [activeChannelId, showPins, fetchPinnedMessages]);
+
+  const handleTogglePin = async (messageId: string, isPinned: boolean) => {
+    try {
+      const action = isPinned ? 'unpin' : 'pin';
+      const res = await apiClient.post<{ success: boolean }>(
+        `/api/messages/${messageId}/${action}`
+      );
+      if (res.success) {
+        // ローカルステートを即時更新 (楽観的UI)
+        onToggleLocalPin(messageId, !isPinned);
+        // ピン一覧を更新
+        if (showPins) {
+          fetchPinnedMessages();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle pin:', err);
+    }
+  };
 
   const fetchDoc = async () => {
     if (!activeChannelId) return;
@@ -132,9 +302,18 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     setShowTasks(false);
     setShowMedia(false);
     setShowDoc(false);
+    setShowPins(false);
+    setShowInputEmojiPicker(false);
     setIsTasksFullScreen(false);
     setIsMediaFullScreen(false);
   }, [activeChannelId]);
+
+  // 新規メッセージ描画時にコードハイライトを適用
+  useEffect(() => {
+    if (messages.length > 0) {
+      Prism.highlightAll();
+    }
+  }, [messages]);
 
   const saveChannelDoc = async (text: string) => {
     if (!activeChannelId) return;
@@ -380,7 +559,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 </span>
               )}
             </div>
-            
+
+
             {/* タスク一覧トグル */}
             <button
               type="button"
@@ -421,6 +601,32 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               }}
             >
               <Image size={18} />
+            </button>
+
+            {/* ピン留めメッセージトグル */}
+            <button
+              type="button"
+              className={`input-icon-btn ${showPins ? 'active' : ''}`}
+              onClick={() => {
+                setShowPins(!showPins);
+                setShowDoc(false);
+                setShowTasks(false);
+                setShowMedia(false);
+              }}
+              title={isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}
+              style={{
+                background: showPins ? 'var(--bg-active)' : 'transparent',
+                color: showPins ? 'var(--accent-warning, #f59e0b)' : 'var(--text-muted)',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <Pin size={18} />
             </button>
 
             {/* ドキュメントトグル */}
@@ -498,6 +704,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               onToggleFullScreen={() => setIsDocFullScreen(!isDocFullScreen)}
               isFullScreen={isDocFullScreen}
               type="chat"
+              lockKey={`channel:${activeChannelId}`}
             />
           </div>
         )}
@@ -569,14 +776,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 messages.map((msg) => {
                   const isSelf = msg.userId === currentUserId;
                   return (
-                    <div key={msg.id} id={`message-${msg.id}`} className={`message-card ${isSelf ? 'self' : ''}`}>
+                    <div key={msg.id} id={`message-${msg.id}`} className={`message-card ${isSelf ? 'self' : ''} ${msg.isPinned ? 'pinned' : ''}`}>
                       <div className="message-avatar">
                         {msg.user.displayName.substring(0, 1).toUpperCase()}
                       </div>
                       <div className="message-content-wrapper">
-                        <div className="message-meta">
+                        <div className="message-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className="message-sender">{msg.user.displayName}</span>
                           <span className="message-time">{formatTime(msg.createdAt)}</span>
+                          {msg.isPinned && (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '10px', color: 'var(--accent-warning, #f59e0b)', fontWeight: 'bold' }}>
+                              <Pin size={10} fill="var(--accent-warning, #f59e0b)" />
+                              {isEn ? 'Pinned' : 'ピン留め済'}
+                            </span>
+                          )}
                         </div>
 
                         {/* 引用返信（リプライ）の表示 */}
@@ -587,15 +800,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                             title={isEn ? 'Click to jump to the quoted message' : 'クリックして引用元メッセージに移動'}
                           >
                             <span className="reply-quote-sender">@{msg.parentMessage.userDisplayName}</span>
-                            <span className="reply-quote-content">{msg.parentMessage.content}</span>
+                            <span className="reply-quote-content" dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(msg.parentMessage.content)) }}></span>
                           </div>
                         )}
                         
                         {/* メッセージ本文の吹き出し */}
                         {msg.content && (
-                          <div className={`message-bubble ${msg.status === 'sending' ? 'pending' : ''}`}>
-                            {msg.content}
-                          </div>
+                          <div 
+                            className={`message-bubble ${msg.status === 'sending' ? 'pending' : ''} markdown-body`}
+                            dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(msg.content)) }}
+                          />
                         )}
 
                         {/* 添付ファイルの表示 */}
@@ -690,7 +904,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                     : (isEn ? `${userIds.length} user(s) reacted` : `${userIds.length}人がリアクションしました`)}
                                   disabled={isSelf}
                                 >
-                                  <span>{emoji}</span>
+                                  {(() => {
+                                    const isCustom = emoji.startsWith(':') && emoji.endsWith(':');
+                                    if (isCustom && customEmojis) {
+                                      const matched = customEmojis.find(e => e.code === emoji);
+                                      if (matched) {
+                                        return <img src={matched.url} alt={emoji} style={{ height: '16px', width: '16px', objectFit: 'contain' }} />;
+                                      }
+                                    }
+                                    return <span>{emoji}</span>;
+                                  })()}
                                   <span style={{ fontWeight: 600 }}>{userIds.length}</span>
                                 </button>
                               );
@@ -714,6 +937,15 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                             >
                               {isEn ? 'Add Task/Event' : 'タスク・予定追加'}
                             </button>
+                            <button 
+                              className={`message-actions-btn ${msg.isPinned ? 'pinned' : ''}`}
+                              onClick={() => handleTogglePin(msg.id, !!msg.isPinned)}
+                              title={msg.isPinned ? (isEn ? 'Unpin message' : 'ピン留めを解除') : (isEn ? 'Pin message' : 'ピン留めする')}
+                              style={{ color: msg.isPinned ? 'var(--accent-warning, #f59e0b)' : 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <Pin size={14} fill={msg.isPinned ? 'var(--accent-warning, #f59e0b)' : 'none'} />
+                            </button>
+
                             {!isSelf && (
                               <button 
                                 className="message-actions-btn"
@@ -741,20 +973,97 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                   boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)' 
                                 }}
                               >
-                                {commonEmojis.map((emoji) => (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    className="emoji-btn"
-                                    onClick={async () => {
-                                      await onToggleReaction(msg.id, emoji);
-                                      setShowEmojiPaletteMsgId(null);
-                                    }}
-                                    style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px', transition: 'transform 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                  {commonEmojis.map((emoji) => (
+                                    <button
+                                      key={emoji}
+                                      type="button"
+                                      className="emoji-btn"
+                                      onClick={async () => {
+                                        await onToggleReaction(msg.id, emoji);
+                                        setShowEmojiPaletteMsgId(null);
+                                      }}
+                                      style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px', transition: 'transform 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    >
+                                      {emoji}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {/* カスタム絵文字エリア */}
+                                <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '6px' }}>
+                                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span>{isEn ? 'Custom Emojis' : 'カスタム絵文字'}</span>
+                                    {isEmojiAdmin && (
+                                      <button 
+                                        type="button"
+                                        onClick={() => setShowEmojiUploadForm(!showEmojiUploadForm)}
+                                        style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', padding: 0 }}
+                                      >
+                                        <Plus size={10} />
+                                        {isEn ? 'Add' : '追加'}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  {showEmojiUploadForm ? (
+                                    <form onSubmit={handleUploadEmoji} style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-main)', padding: '6px', borderRadius: '4px' }}>
+                                      <input 
+                                        type="text" 
+                                        placeholder=":code:" 
+                                        value={newEmojiCode} 
+                                        onChange={(e) => setNewEmojiCode(e.target.value)}
+                                        style={{ fontSize: '11px', padding: '2px 4px', background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: '3px', color: 'var(--text-primary)' }}
+                                        required
+                                      />
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                        <button 
+                                          type="button" 
+                                          onClick={() => emojiFileInputRef.current?.click()}
+                                          style={{ fontSize: '10px', padding: '2px 6px', background: 'var(--bg-active)', border: 'none', borderRadius: '3px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                                        >
+                                          <Upload size={10} />
+                                          {newEmojiFile ? newEmojiFile.name.substring(0, 10) : (isEn ? 'Choose' : '選択')}
+                                        </button>
+                                        <input 
+                                          type="file" 
+                                          ref={emojiFileInputRef} 
+                                          onChange={(e) => setNewEmojiFile(e.target.files?.[0] || null)}
+                                          accept="image/*"
+                                          style={{ display: 'none' }}
+                                        />
+                                        <button 
+                                          type="submit" 
+                                          disabled={uploadingEmoji}
+                                          style={{ fontSize: '10px', padding: '2px 6px', background: 'var(--accent-primary)', border: 'none', borderRadius: '3px', color: '#fff', cursor: 'pointer', marginLeft: 'auto' }}
+                                        >
+                                          {uploadingEmoji ? (isEn ? 'Uploading...' : '中...') : (isEn ? 'Save' : '保存')}
+                                        </button>
+                                      </div>
+                                    </form>
+                                  ) : (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '100px', overflowY: 'auto', padding: '2px' }}>
+                                      {customEmojis.length === 0 ? (
+                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{isEn ? 'No custom emojis' : 'なし'}</span>
+                                      ) : (
+                                        customEmojis.map((emoji) => (
+                                          <button
+                                            key={emoji.id}
+                                            type="button"
+                                            onClick={async () => {
+                                              await onToggleReaction(msg.id, emoji.code);
+                                              setShowEmojiPaletteMsgId(null);
+                                            }}
+                                            title={emoji.code}
+                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                          >
+                                            <img src={emoji.url} alt={emoji.code} style={{ height: '20px', width: '20px', objectFit: 'contain' }} />
+                                          </button>
+                                        ))
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -820,7 +1129,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   onKeyDown={handleKeyDown}
                 />
                 <div className="chat-input-actions">
-                  <div className="input-action-buttons">
+                  <div className="input-action-buttons" style={{ position: 'relative' }}>
                     <button 
                       type="button" 
                       className="input-icon-btn" 
@@ -835,6 +1144,134 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                       onChange={handleFileChange} 
                       style={{ display: 'none' }} 
                     />
+
+                    <button 
+                      type="button" 
+                      className={`input-icon-btn ${showInputEmojiPicker ? 'active' : ''}`}
+                      title={isEn ? 'Insert Emoji' : '絵文字を挿入'}
+                      onClick={() => setShowInputEmojiPicker(!showInputEmojiPicker)}
+                    >
+                      <Smile size={18} />
+                    </button>
+
+                    {showInputEmojiPicker && (
+                      <div 
+                        className="input-emoji-picker-popover"
+                        style={{
+                          position: 'absolute',
+                          bottom: '100%',
+                          left: '10px',
+                          zIndex: 100,
+                          background: 'var(--bg-panel)',
+                          border: '1px solid var(--border-light)',
+                          borderRadius: '8px',
+                          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                          padding: '10px',
+                          width: '260px',
+                          marginBottom: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '8px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {commonEmojis.map(emoji => (
+                            <button
+                              key={emoji}
+                              type="button"
+                              onClick={() => {
+                                setInputText(prev => prev + emoji);
+                                setShowInputEmojiPicker(false);
+                              }}
+                              style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', padding: '4px' }}
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '6px' }}>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>{isEn ? 'Custom Emojis' : 'カスタム絵文字'}</span>
+                            {isEmojiAdmin && (
+                              <button 
+                                type="button"
+                                onClick={() => setShowInputEmojiUploadForm(!showInputEmojiUploadForm)}
+                                style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', padding: 0 }}
+                              >
+                                <Plus size={10} />
+                                {isEn ? 'Add' : '追加'}
+                              </button>
+                            )}
+                          </div>
+
+                          {showInputEmojiUploadForm ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-main)', padding: '6px', borderRadius: '4px', marginBottom: '6px' }}>
+                              <input 
+                                type="text" 
+                                placeholder=":code:" 
+                                value={inputEmojiCode} 
+                                onChange={(e) => setInputEmojiCode(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleUploadInputEmoji(e);
+                                  }
+                                }}
+                                style={{ fontSize: '11px', padding: '2px 4px', background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: '3px', color: 'var(--text-primary)' }}
+                              />
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <button 
+                                  type="button" 
+                                  onClick={() => inputEmojiFileInputRef.current?.click()}
+                                  style={{ fontSize: '10px', padding: '2px 6px', background: 'var(--bg-active)', border: 'none', borderRadius: '3px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                                >
+                                  <Upload size={10} />
+                                  {inputEmojiFile ? inputEmojiFile.name.substring(0, 10) : (isEn ? 'Choose' : '選択')}
+                                </button>
+                                <input 
+                                  type="file" 
+                                  ref={inputEmojiFileInputRef} 
+                                  onChange={(e) => setInputEmojiFile(e.target.files?.[0] || null)}
+                                  accept="image/*"
+                                  style={{ display: 'none' }}
+                                />
+                                <button 
+                                  type="button" 
+                                  onClick={() => handleUploadInputEmoji()}
+                                  disabled={uploadingInputEmoji}
+                                  style={{ fontSize: '10px', padding: '2px 6px', background: 'var(--accent-primary)', border: 'none', borderRadius: '3px', color: '#fff', cursor: 'pointer', marginLeft: 'auto' }}
+                                >
+                                  {uploadingInputEmoji ? (isEn ? 'Uploading...' : '中...') : (isEn ? 'Save' : '保存')}
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '120px', overflowY: 'auto' }}>
+                              {customEmojis.length === 0 ? (
+                                <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                                  {isEn ? 'No custom emojis' : 'なし'}
+                                </span>
+                              ) : (
+                                customEmojis.map(emoji => (
+                                  <button
+                                    key={emoji.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setInputText(prev => prev + ' ' + emoji.code + ' ');
+                                      setShowInputEmojiPicker(false);
+                                    }}
+                                    title={emoji.code}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center' }}
+                                  >
+                                    <img src={emoji.url} alt={emoji.code} style={{ height: '20px', width: '20px', objectFit: 'contain' }} />
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <button
                     type="submit"
@@ -867,6 +1304,114 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           onSave={handleSaveItemFromChat}
         />
       </div>
+
+      {showPins && (
+          <div 
+            className="pinned-messages-modal-overlay" 
+            onClick={() => setShowPins(false)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100vw',
+              height: '100vh',
+              background: 'rgba(0, 0, 0, 0.4)',
+              backdropFilter: 'blur(3px)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}
+          >
+            <div 
+              className="pinned-messages-modal" 
+              onClick={(e) => e.stopPropagation()}
+              style={{ 
+                width: '450px', 
+                maxHeight: '80vh', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                background: 'var(--bg-panel)', 
+                border: '1px solid var(--border-light)',
+                borderRadius: '12px',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+                overflow: 'hidden'
+              }}
+            >
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '15px' }}>
+                  <Pin size={16} fill="var(--accent-warning, #f59e0b)" color="var(--accent-warning, #f59e0b)" />
+                  <span>{isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}</span>
+                </div>
+                <button 
+                  onClick={() => setShowPins(false)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              
+              <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+                {loadingPins ? (
+                  <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
+                    <Loader className="spin" size={24} />
+                  </div>
+                ) : pinnedMessages.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                    {isEn ? 'No pinned messages in this channel.' : 'このチャンネルにピン留めされたメッセージはありません。'}
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {pinnedMessages.map((pin) => (
+                      <div 
+                        key={pin.id} 
+                        className="pinned-message-item"
+                        style={{ 
+                          padding: '14px', 
+                          background: 'var(--bg-main)', 
+                          border: '1px solid var(--border-light)', 
+                          borderRadius: '8px',
+                          position: 'relative'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{pin.user?.displayName || 'User'}</span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatTime(pin.createdAt)}</span>
+                        </div>
+                        
+                        <div 
+                          style={{ fontSize: '13px', wordBreak: 'break-all', color: 'var(--text-primary)', lineHeight: 1.4 }}
+                          dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(pin.content)) }}
+                        />
+
+                        {/* 添付ファイルの簡易表示 */}
+                        {pin.fileUrl && (
+                          <div style={{ marginTop: '6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Paperclip size={12} />
+                            <a href={pin.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                              {pin.fileName || 'Attachment'}
+                            </a>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '10px', color: 'var(--text-muted)' }}>
+                          <span>{isEn ? `Pinned by ${pin.pinnedBy}` : `${pin.pinnedBy} がピン留め`}</span>
+                          <button 
+                            onClick={() => handleTogglePin(pin.id, true)}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-danger, #ef4444)', cursor: 'pointer', fontSize: '10px', padding: 0 }}
+                          >
+                            {isEn ? 'Unpin' : '解除'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
     </div>
   );
 };

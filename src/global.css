@@ -1598,8 +1598,6 @@ body {
   font-family: monospace;
   font-size: 12px;
   color: #a78bfa;
-  background: transparent;
-  padding: 0;
 }
 
 .document-preview-content a {
@@ -1958,3 +1956,158 @@ body {
   transform: translateY(0);
 }
 
+/* ==========================================================================
+   Unread Message Badge Styles & Markdown Extra Styles
+   ========================================================================== */
+.channel-unread-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--accent-danger, #ef4444);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: 8px;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.channel-unread-badge.collapsed {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  height: 14px;
+  min-width: 14px;
+  padding: 0 3px;
+  font-size: 9px;
+  border-radius: 7px;
+  border: 1px solid var(--bg-sidebar, #1e1e2e);
+  margin-left: 0;
+}
+
+/* マークダウンメッセージのスタイル調整 */
+.markdown-body {
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.markdown-body p {
+  margin: 0 0 8px 0;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body pre {
+  background: #1e1e2e;
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+
+.markdown-body code {
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+}
+
+.markdown-body :not(pre) > code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 4px;
+  border-radius: 4px;
+  color: #f43f5e;
+}
+
+.markdown-body ul, .markdown-body ol {
+  margin: 0 0 8px 0;
+  padding-left: 20px;
+}
+
+.markdown-body li {
+  margin-bottom: 4px;
+}
+
+.markdown-body blockquote {
+  border-left: 4px solid var(--accent-primary);
+  margin: 8px 0;
+  padding-left: 12px;
+  color: var(--text-muted);
+}
+
+/* ==========================================
+   ⭐ チャンネル・DMお気に入りスターボタンの表示制御
+   ========================================== */
+.channel-item .channel-star-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.channel-item:hover .channel-star-btn {
+  opacity: 0.6;
+}
+
+.channel-item .channel-star-btn:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+/* ==========================================
+   📌 ピン留めメッセージ一覧ドロワーパネル
+   ========================================== */
+.pinned-messages-drawer {
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.2);
+  z-index: 50;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.pinned-message-item {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pinned-message-item:hover {
+  border-color: var(--accent-warning, #f59e0b) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ピン留めアクションボタンのアクティブ配色 */
+.message-actions-btn.pinned {
+  color: var(--accent-warning, #f59e0b) !important;
+  opacity: 1 !important;
+}
+
+/* お気に入り登録済みのときは常に表示 */
+.channel-item .channel-star-btn.starred {
+  opacity: 1;
+}
+
+.channel-item:hover .channel-star-btn.starred {
+  opacity: 1;
+}
+
+/* ピン留めされたメッセージの強調表示 */
+.message-card.pinned .message-bubble {
+  border-color: var(--accent-warning, #f59e0b) !important;
+  background-color: rgba(245, 158, 11, 0.08) !important;
+}
+
+.theme-light .message-card.pinned .message-bubble {
+  background-color: rgba(245, 158, 11, 0.05) !important;
+}

@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Edit2, Eye, Save, X, Maximize2, Minimize2, List, Menu } from 'lucide-react';
 import { parseMarkdownToHtml, extractTocFromMarkdown, TocItem } from '../utils/markdown';
 import { useLanguage } from '../utils/i18n';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
+import { apiClient } from '../utils/apiClient';
 
 interface DocumentPanelProps {
   title: string;
@@ -12,6 +15,7 @@ interface DocumentPanelProps {
   isFullScreen?: boolean;
   onMenuClick?: () => void;
   type?: 'workspace' | 'chat';
+  lockKey: string;
 }
 
 export const DocumentPanel: React.FC<DocumentPanelProps> = ({
@@ -23,10 +27,14 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
   isFullScreen,
   onMenuClick,
   type = 'workspace',
+  lockKey,
 }) => {
   const { t } = useLanguage();
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [markdown, setMarkdown] = useState(initialValue);
+  const [lockInfo, setLockInfo] = useState<{ isLocked: boolean; lockedByUserName?: string; lockedByUserId?: string } | null>(null);
+  const [hasMyLock, setHasMyLock] = useState(false);
+  const [acquiringLock, setAcquiringLock] = useState(false);
   const [toc, setToc] = useState<TocItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [isTocOpen, setIsTocOpen] = useState<boolean>(() => {
@@ -50,10 +58,105 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
     setToc(extractTocFromMarkdown(markdown));
   }, [markdown]);
 
+  useEffect(() => {
+    if (mode === 'view') {
+      Prism.highlightAll();
+    }
+  }, [mode, markdown]);
+
+  const checkLockStatus = useCallback(async () => {
+    try {
+      const res = await apiClient.get<{ success: boolean; isLocked: boolean; lockedByUserName?: string; lockedByUserId?: string }>(
+        `/api/document-locks/${encodeURIComponent(lockKey)}`
+      );
+      if (res.success) {
+        setLockInfo(res.isLocked ? { isLocked: true, lockedByUserName: res.lockedByUserName, lockedByUserId: res.lockedByUserId } : null);
+      }
+    } catch (err) {
+      console.error("Failed to check lock status:", err);
+    }
+  }, [lockKey]);
+
+  useEffect(() => {
+    checkLockStatus();
+    const interval = setInterval(() => {
+      if (!hasMyLock) {
+        checkLockStatus();
+      }
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [checkLockStatus, hasMyLock]);
+
+  useEffect(() => {
+    if (!hasMyLock) return;
+    const interval = setInterval(async () => {
+      try {
+        await apiClient.post(`/api/document-locks/${encodeURIComponent(lockKey)}/heartbeat`);
+      } catch (err) {
+        console.error("Failed to send lock heartbeat:", err);
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [hasMyLock, lockKey]);
+
+  useEffect(() => {
+    const handleUnload = () => {
+      if (hasMyLock) {
+        // keepalive を使ってブラウザを閉じた際も非同期でロック解放
+        fetch(`/api/document-locks/${encodeURIComponent(lockKey)}/release`, {
+          method: 'POST',
+          headers: {
+            'X-User-Id': localStorage.getItem('cospace_user_id') || '',
+          },
+          keepalive: true,
+        });
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [hasMyLock, lockKey]);
+
+  const startEditing = async () => {
+    setAcquiringLock(true);
+    try {
+      const res = await apiClient.post<{ success: boolean; error?: string; lockedByUserName?: string }>(
+        `/api/document-locks/${encodeURIComponent(lockKey)}/acquire`
+      );
+      if (res.success) {
+        setHasMyLock(true);
+        setMode('edit');
+      } else {
+        alert(
+          res.lockedByUserName 
+            ? (t('error') === 'Error' ? `${res.lockedByUserName} is editing this document now.` : `${res.lockedByUserName} さんが現在編集中のため、ロックを取得できませんでした。`)
+            : (t('error') === 'Error' ? "Failed to acquire lock." : "ロックの取得に失敗しました。")
+        );
+        checkLockStatus();
+      }
+    } catch (err) {
+      console.error("Lock acquire request failed:", err);
+      alert(t('error') === 'Error' ? "Failed to start editing (server error)" : "編集を開始できませんでした（サーバーエラー）");
+    } finally {
+      setAcquiringLock(false);
+    }
+  };
+
+  const releaseLock = async () => {
+    if (!hasMyLock) return;
+    try {
+      await apiClient.post(`/api/document-locks/${encodeURIComponent(lockKey)}/release`);
+    } catch (err) {
+      console.error("Failed to release lock:", err);
+    } finally {
+      setHasMyLock(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
       await onSave(markdown);
+      await releaseLock();
       setMode('view');
     } catch (err: any) {
       alert((t('error') === 'Error' ? 'Failed to save document: ' : 'ドキュメントの保存に失敗しました: ') + (err.message || err));
@@ -62,8 +165,9 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     setMarkdown(initialValue);
+    await releaseLock();
     setMode('view');
   };
 
@@ -144,6 +248,22 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
               onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
               onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
             >
+              {lockInfo?.isLocked && (
+                <span 
+                  style={{ 
+                    fontSize: '10px', 
+                    color: 'var(--accent-danger, #ef4444)', 
+                    padding: '2px 4px', 
+                    fontWeight: 'bold',
+                    maxWidth: '120px',
+                    wordBreak: 'break-all',
+                    textAlign: 'center'
+                  }}
+                  title={`${lockInfo.lockedByUserName} さんが編集中`}
+                >
+                  ⚠️ {lockInfo.lockedByUserName.substring(0, 8)}...
+                </span>
+              )}
               {mode === 'view' ? (
                 <>
                   {/* 1. 目次トグルボタン */}
@@ -169,24 +289,30 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
                   {/* 縦配置用の区切り線 */}
                   <div style={{ height: '1px', width: '16px', background: 'var(--border-light)', margin: '2px 0' }} />
 
-                  {/* 2. 編集ボタン */}
+                   {/* 2. 編集ボタン */}
                   <button
-                    onClick={() => setMode('edit')}
-                    title={t('error') === 'Error' ? 'Edit document' : 'ドキュメントを編集'}
+                    onClick={startEditing}
+                    disabled={!!lockInfo?.isLocked || acquiringLock}
+                    title={lockInfo?.isLocked ? (t('error') === 'Error' ? `${lockInfo.lockedByUserName} is editing` : `${lockInfo.lockedByUserName} さんが編集中のため編集できません`) : (t('error') === 'Error' ? 'Edit document' : 'ドキュメントを編集')}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      background: 'transparent',
+                      background: lockInfo?.isLocked ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
                       border: 'none',
-                      color: 'var(--text-primary)',
+                      color: lockInfo?.isLocked ? 'var(--text-muted)' : 'var(--text-primary)',
                       padding: '6px',
                       borderRadius: '6px',
-                      cursor: 'pointer',
+                      cursor: (lockInfo?.isLocked || acquiringLock) ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s ease',
+                      opacity: lockInfo?.isLocked ? 0.5 : 1
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    onMouseEnter={(e) => {
+                      if (!lockInfo?.isLocked) e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))';
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!lockInfo?.isLocked) e.currentTarget.style.background = 'transparent';
+                    }}
                   >
                     <Edit2 size={16} />
                   </button>

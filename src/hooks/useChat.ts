@@ -26,6 +26,7 @@ export interface Message {
   user: User; // メッセージ送信者の簡易プロフィール情報
   replyCount?: number;
   lastReplyAt?: string | null;
+  isPinned?: boolean;
   reactions?: Array<{
     id: string;
     emoji: string;
@@ -253,6 +254,21 @@ export function useChat({ channelId, currentUser, apiSendMessage }: UseChatOptio
     );
   }, []);
 
+  /**
+   * ローカルのピン留め状態をトグルする
+   */
+  const toggleLocalPin = useCallback((messageId: string, isPinned: boolean) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== messageId) return msg;
+        return {
+          ...msg,
+          isPinned,
+        };
+      })
+    );
+  }, []);
+
   return {
     messages,
     sendMessage,
@@ -260,5 +276,6 @@ export function useChat({ channelId, currentUser, apiSendMessage }: UseChatOptio
     deleteFailedMessage,
     setFetchedMessages,
     toggleLocalReaction,
+    toggleLocalPin,
   };
 }
