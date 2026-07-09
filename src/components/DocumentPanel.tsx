@@ -259,9 +259,9 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
                     wordBreak: 'break-all',
                     textAlign: 'center'
                   }}
-                  title={`${lockInfo.lockedByUserName} さんが編集中`}
+                  title={`${lockInfo.lockedByUserName || ''} さんが編集中`}
                 >
-                  ⚠️ {lockInfo.lockedByUserName.substring(0, 8)}...
+                  ⚠️ {(lockInfo.lockedByUserName || '').substring(0, 8)}...
                 </span>
               )}
               {mode === 'view' ? (
