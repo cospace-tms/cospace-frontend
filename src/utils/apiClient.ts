@@ -26,19 +26,23 @@ export class ApiClient {
 
   // サイレントリフレッシュ制御用の変数
   private isRefreshing = false;
-  private refreshSubscribers: ((token: string) => void)[] = [];
+  private refreshSubscribers: {
+    resolve: (token: string) => void;
+    reject: (error: any) => void;
+  }[] = [];
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
   }
 
   private onTokenRefreshed(token: string) {
-    this.refreshSubscribers.forEach((callback) => callback(token));
+    this.refreshSubscribers.forEach((sub) => sub.resolve(token));
     this.refreshSubscribers = [];
   }
 
-  private addRefreshSubscriber(callback: (token: string) => void) {
-    this.refreshSubscribers.push(callback);
+  private onTokenRefreshFailed(error: any) {
+    this.refreshSubscribers.forEach((sub) => sub.reject(error));
+    this.refreshSubscribers = [];
   }
 
   /**
@@ -188,6 +192,7 @@ export class ApiClient {
           } catch (refreshErr) {
             this.isRefreshing = false;
             this.setToken(null);
+            this.onTokenRefreshFailed(refreshErr);
             // グローバルにログアウトを通知するイベントを発火
             if (typeof window !== "undefined") {
               window.dispatchEvent(new Event("auth:logout"));
@@ -198,11 +203,16 @@ export class ApiClient {
 
         // リフレッシュが完了するまで待機し、新しいトークンでリクエストを再試行する
         return new Promise<T>((resolve, reject) => {
-          this.addRefreshSubscriber((newToken) => {
-            requestHeaders.set("Authorization", `Bearer ${newToken}`);
-            this.request<T>(endpoint, { ...options, headers: requestHeaders })
-              .then(resolve)
-              .catch(reject);
+          this.refreshSubscribers.push({
+            resolve: (newToken) => {
+              requestHeaders.set("Authorization", `Bearer ${newToken}`);
+              this.request<T>(endpoint, { ...options, headers: requestHeaders })
+                .then(resolve)
+                .catch(reject);
+            },
+            reject: (err) => {
+              reject(err);
+            }
           });
         });
       }
