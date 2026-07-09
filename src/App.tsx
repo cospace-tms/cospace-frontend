@@ -212,26 +212,33 @@ function AppContent() {
     }
   };
 
+  const isLoggingOutRef = React.useRef(false);
+
   const handleLogout = async () => {
+    if (isLoggingOutRef.current) return;
+    isLoggingOutRef.current = true;
     try {
-      await apiClient.post('/api/auth/logout');
+      try {
+        await apiClient.post('/api/auth/logout');
+      } catch (err) {
+        console.warn('Backend logout failed:', err);
+      }
+      localStorage.removeItem('cospace_session');
+      apiClient.setWorkspaceId(null);
+      apiClient.setUserId(null);
+      apiClient.setToken(null);
+      setSession(null);
+      // ログアウト時に再度セットアップチェック
+      setLoading(true);
+      const res = await apiClient.get<{ setupRequired: boolean }>('/api/setup/status');
+      setSetupRequired(res.setupRequired);
     } catch (err) {
-      console.warn('Backend logout failed:', err);
+      console.error('Failed to get setup status during logout:', err);
+      setError(t('error') === 'Error' ? 'Failed to connect to Workers backend. Please make sure the server is running.' : 'Workers バックエンドへの接続に失敗しました。サーバーが起動しているか確認してください。');
+    } finally {
+      setLoading(false);
+      isLoggingOutRef.current = false;
     }
-    localStorage.removeItem('cospace_session');
-    apiClient.setWorkspaceId(null);
-    apiClient.setUserId(null);
-    apiClient.setToken(null);
-    setSession(null);
-    // ログアウト時に再度セットアップチェック
-    setLoading(true);
-    apiClient.get<{ setupRequired: boolean }>('/api/setup/status')
-      .then((res) => setSetupRequired(res.setupRequired))
-      .catch((err) => {
-        console.error('Failed to get setup status during logout:', err);
-        setError('Workers バックエンドへの接続に失敗しました。サーバーが起動しているか確認してください。');
-      })
-      .finally(() => setLoading(false));
   };
 
   const handleUpdateSession = (displayName: string, avatarUrl: string | null, language?: string) => {
