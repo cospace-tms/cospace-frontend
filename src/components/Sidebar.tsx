@@ -470,17 +470,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <Image size={16} style={{ flexShrink: 0 }} />
                 </li>
-                <li
-                  className={`channel-item ${activeView === 'search' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveView('search');
-                    setActiveChannelId(null);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '8px 0' }}
-                  title={t('error') === 'Error' ? 'Search' : '検索'}
-                >
-                  <Search size={16} style={{ flexShrink: 0 }} />
-                </li>
                 {onOpenWorkspaceMembers && (
                   <li
                     className={`channel-item ${activeView === 'workspace_settings' ? 'active' : ''}`}
@@ -498,13 +487,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ))}
 
-           {/* お気に入り（Starred）セクション */}
-          {!isCollapsed && starredChannels.length > 0 && (
-            <div className="sidebar-section" style={{ padding: '0 8px', marginBottom: '12px' }}>
-              <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-warning, #f59e0b)' }}>
-                <Star size={14} fill="var(--accent-warning, #f59e0b)" />
-                <span>{t('error') === 'Error' ? 'Starred' : 'お気に入り'}</span>
-              </div>
+          {/* お気に入り（Starred）セクション */}
+          {starredChannels.length > 0 && (
+            <div className="sidebar-section" style={{ padding: isCollapsed ? '0 4px' : '0 8px', marginBottom: '12px' }}>
+              {!isCollapsed ? (
+                <div className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--accent-warning, #f59e0b)' }}>
+                  <Star size={14} fill="var(--accent-warning, #f59e0b)" />
+                  <span>{t('error') === 'Error' ? 'Starred' : 'お気に入り'}</span>
+                </div>
+              ) : (
+                <div style={{ borderBottom: '1px solid var(--border-light)', margin: '8px 0' }} />
+              )}
               <ul className="channel-list">
                 {starredChannels.map((channel) => {
                   const isActive = channel.id === activeChannelId;
@@ -533,52 +526,93 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingLeft: '12px',
-                        paddingRight: '8px',
+                        justifyContent: isCollapsed ? 'center' : 'space-between',
+                        paddingLeft: isCollapsed ? '0' : '12px',
+                        paddingRight: isCollapsed ? '0' : '8px',
                         fontWeight: hasUnread ? '700' : '500',
                         color: hasUnread ? 'var(--text-primary)' : 'var(--text-muted)',
+                        position: 'relative'
                       }}
+                      title={isCollapsed ? dmDisplayName : undefined}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-                        {channel.type === 'dm' ? (
-                          <MessageCircle size={16} style={{ flexShrink: 0, opacity: 0.7 }} />
-                        ) : channel.isPrivate ? (
-                          <Lock size={16} style={{ flexShrink: 0, opacity: 0.7 }} />
-                        ) : (
-                          <Hash size={16} style={{ flexShrink: 0 }} />
-                        )}
-                        <span>{dmDisplayName}</span>
-                      </div>
-                      
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={(e) => e.stopPropagation()}>
-                        {channel.unreadCount !== undefined && channel.unreadCount > 0 && !isActive && (
-                          <span className="channel-unread-badge">
-                            {channel.unreadCount > 99 ? '99+' : channel.unreadCount}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => onToggleStarChannel?.(channel.id, true)}
-                          style={{ background: 'none', border: 'none', color: 'var(--accent-warning, #f59e0b)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
-                          title="お気に入りから外す"
+                      {isCollapsed ? (
+                        <div 
+                          className="channel-initial-avatar" 
+                          style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: isActive ? 'var(--primary-color)' : 'var(--bg-panel)',
+                            color: isActive ? '#fff' : 'var(--accent-warning, #f59e0b)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            border: '1px solid var(--accent-warning, #f59e0b)'
+                          }}
                         >
-                          <Star size={14} fill="var(--accent-warning, #f59e0b)" />
-                        </button>
-                        {canEditChannel() && onOpenChannelSettings && (
-                          <button
-                            className="channel-menu-btn"
-                            type="button"
-                            onClick={() => {
-                              onOpenChannelSettings(channel);
-                            }}
-                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: isActive ? 1 : 0, transition: 'opacity 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}
-                            title="チャンネル設定"
-                          >
-                            <MoreHorizontal size={14} />
-                          </button>
-                        )}
-                      </div>
+                          {dmDisplayName.substring(0, 1).toUpperCase()}
+                          {channel.unreadCount !== undefined && channel.unreadCount > 0 && !isActive ? (
+                            <span className="channel-unread-badge collapsed">
+                              {channel.unreadCount > 9 ? '9+' : channel.unreadCount}
+                            </span>
+                          ) : (hasUnread && !isActive && (
+                            <span style={{
+                              position: 'absolute',
+                              top: '2px',
+                              right: '2px',
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              background: 'var(--primary-color)',
+                              border: '1px solid var(--bg-sidebar)'
+                            }}></span>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                            {channel.type === 'dm' ? (
+                              <MessageCircle size={16} style={{ flexShrink: 0, opacity: 0.7 }} />
+                            ) : channel.isPrivate ? (
+                              <Lock size={16} style={{ flexShrink: 0, opacity: 0.7 }} />
+                            ) : (
+                              <Hash size={16} style={{ flexShrink: 0 }} />
+                            )}
+                            <span>{dmDisplayName}</span>
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} onClick={(e) => e.stopPropagation()}>
+                            {channel.unreadCount !== undefined && channel.unreadCount > 0 && !isActive && (
+                              <span className="channel-unread-badge">
+                                {channel.unreadCount > 99 ? '99+' : channel.unreadCount}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => onToggleStarChannel?.(channel.id, true)}
+                              style={{ background: 'none', border: 'none', color: 'var(--accent-warning, #f59e0b)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
+                              title="お気に入りから外す"
+                            >
+                              <Star size={14} fill="var(--accent-warning, #f59e0b)" />
+                            </button>
+                            {canEditChannel() && onOpenChannelSettings && (
+                              <button
+                                className="channel-menu-btn"
+                                type="button"
+                                onClick={() => {
+                                  onOpenChannelSettings(channel);
+                                }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: isActive ? 1 : 0, transition: 'opacity 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', marginLeft: '4px' }}
+                                title="チャンネル設定"
+                              >
+                                <MoreHorizontal size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </li>
                   );
                 })}
@@ -934,7 +968,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* ユーザー情報フッター */}
         {currentUser && (
-          <div className="sidebar-footer" style={{ position: 'relative', padding: isCollapsed ? '12px 0' : '12px 16px', borderTop: '1px solid var(--border-light)' }}>
+          <div className="sidebar-footer" style={{ position: 'relative', zIndex: showUserMenu ? 200 : 1, padding: isCollapsed ? '12px 0' : '12px 16px', borderTop: '1px solid var(--border-light)' }}>
             {isCollapsed ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
                 <div 

@@ -483,15 +483,26 @@ body {
 
 .polling-badge {
   font-size: 11px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 12px;
+  border-radius: 16px;
+  background: rgba(23, 23, 23, 0.85); /* 背景色を少し濃くして視認性を確保 */
   border: 1px solid var(--border-light);
   color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 6px;
   transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  
+  /* 絶対配置で上部中央にフロート */
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  pointer-events: none; /* 下の要素の操作を邪魔しないようにする */
 }
 
 .polling-badge.active {
@@ -1314,6 +1325,53 @@ body {
   white-space: nowrap;
 }
 
+/* Pinned Messages Popover */
+.pinned-popover {
+  position: absolute;
+  top: 70px;
+  right: 24px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), var(--shadow-premium);
+  width: 320px;
+  z-index: 100;
+  padding: 16px;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  animation: popoverFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  max-height: 400px;
+}
+
+.pinned-popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 8px;
+}
+
+.pinned-popover-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pinned-popover-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-right: 4px;
+}
+
 /* ==========================================================================
    Reply & Quote Styles (LINE / Discord Style)
    ========================================================================== */
@@ -1723,7 +1781,9 @@ body {
   }
 
   .polling-badge {
-    display: none !important; /* スマホ時は同期ステータステキストを非表示にして幅を確保 */
+    top: 8px;
+    padding: 4px 8px;
+    font-size: 10px;
   }
 
   .channel-info-desc {
@@ -1748,7 +1808,9 @@ body {
 /* PC表示でのモバイル専用ビューセレクト非表示 */
 .items-view-select-mobile,
 .media-upload-toggle-btn,
-.settings-view-select-mobile {
+.settings-view-select-mobile,
+.items-chat-header-mobile,
+.items-mobile-add-btn {
   display: none !important;
 }
 
@@ -1767,6 +1829,18 @@ body {
     flex-shrink: 0;
     font-weight: 600;
     border-color: var(--accent-primary) !important; /* 識別しやすくするためアクセントカラー */
+  }
+
+  /* チャットモード用スマホヘッダーをスマホ表示の時のみ有効化 */
+  .items-chat-header-mobile {
+    display: flex !important;
+    padding: 8px 16px !important;
+    border-bottom: 1px solid var(--border-light) !important;
+  }
+
+  /* スマホ用追加ボタンをスマホ表示の時のみ有効化 */
+  .items-mobile-add-btn {
+    display: flex !important;
   }
 
   /* フィルターバーを1行で横スクロール可能に */

@@ -517,7 +517,13 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             {channelMembers && channelMembers.length > 0 && (
               <div 
                 className="channel-members-trigger"
-                onClick={() => setShowMembersPopover(!showMembersPopover)}
+                onClick={() => {
+                  const nextShow = !showMembersPopover;
+                  setShowMembersPopover(nextShow);
+                  if (nextShow) {
+                    setShowPins(false);
+                  }
+                }}
                 title={isEn ? 'Show members' : 'メンバー一覧を表示'}
               >
                 <div className="avatar-group">
@@ -546,19 +552,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
             )}
 
-            {/* ポーリング監視モニター */}
-            <div className={`polling-badge ${pollingInfo.isActive ? 'active' : ''}`}>
-              <span>
-                {pollingInfo.isActive 
-                  ? `Syncing (${pollingInfo.intervalTime / 1000}s)` 
-                  : 'Paused'}
-              </span>
-              {pollingInfo.isActive && pollingInfo.consecutiveEmptyCount > 0 && (
-                <span style={{ opacity: 0.7, fontSize: '10px' }}>
-                  (No news x{pollingInfo.consecutiveEmptyCount})
-                </span>
-              )}
-            </div>
 
 
             {/* タスク一覧トグル */}
@@ -608,7 +601,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               type="button"
               className={`input-icon-btn ${showPins ? 'active' : ''}`}
               onClick={() => {
-                setShowPins(!showPins);
+                const nextShowPins = !showPins;
+                setShowPins(nextShowPins);
+                if (nextShowPins) {
+                  setShowMembersPopover(false);
+                }
                 setShowDoc(false);
                 setShowTasks(false);
                 setShowMedia(false);
@@ -680,6 +677,80 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ピン留めメッセージポップオーバー */}
+        {showPins && (
+          <div className="pinned-popover">
+            <div className="pinned-popover-header">
+              <div className="pinned-popover-title">
+                <Pin size={16} fill="var(--accent-warning, #f59e0b)" color="var(--accent-warning, #f59e0b)" />
+                <span>{isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}</span>
+              </div>
+              <button 
+                onClick={() => setShowPins(false)}
+                className="members-popover-close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="pinned-popover-list">
+              {loadingPins ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
+                  <Loader className="spin animate-spin" size={20} />
+                </div>
+              ) : pinnedMessages.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px', fontSize: '13px' }}>
+                  {isEn ? 'No pinned messages in this channel.' : 'ピン留めされたメッセージはありません。'}
+                </div>
+              ) : (
+                pinnedMessages.map((pin) => (
+                  <div 
+                    key={pin.id} 
+                    className="pinned-message-item"
+                    style={{ 
+                      padding: '10px', 
+                      background: 'var(--bg-main)', 
+                      border: '1px solid var(--border-light)', 
+                      borderRadius: '8px',
+                      position: 'relative'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{pin.user?.displayName || 'User'}</span>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatTime(pin.createdAt)}</span>
+                    </div>
+                    
+                    <div 
+                      style={{ fontSize: '12px', wordBreak: 'break-all', color: 'var(--text-primary)', lineHeight: 1.4 }}
+                      dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(pin.content)) }}
+                    />
+
+                    {/* 添付ファイルの簡易表示 */}
+                    {pin.fileUrl && (
+                      <div style={{ marginTop: '4px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Paperclip size={10} />
+                        <a href={pin.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                          {pin.fileName || 'Attachment'}
+                        </a>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '9px', color: 'var(--text-muted)' }}>
+                      <span>{isEn ? `Pinned by ${pin.pinnedBy}` : `${pin.pinnedBy} がピン`}</span>
+                      <button 
+                        onClick={() => handleTogglePin(pin.id, true)}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent-danger, #ef4444)', cursor: 'pointer', fontSize: '9px', padding: 0 }}
+                      >
+                        {isEn ? 'Unpin' : '解除'}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -764,7 +835,21 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
         {/* メインチャット表示エリア（ドキュメント/タスク/メディアが全画面表示のときは非表示に） */}
         {!(showDoc && isDocFullScreen) && !(showTasks && isTasksFullScreen) && !(showMedia && isMediaFullScreen) && (
-          <>
+          <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {/* ポーリング監視モニター（チャット欄上部にフロート） */}
+            <div className={`polling-badge ${pollingInfo.isActive ? 'active' : ''}`}>
+              <span>
+                {pollingInfo.isActive 
+                  ? `Syncing (${pollingInfo.intervalTime / 1000}s)` 
+                  : 'Paused'}
+              </span>
+              {pollingInfo.isActive && pollingInfo.consecutiveEmptyCount > 0 && (
+                <span style={{ opacity: 0.7, fontSize: '10px' }}>
+                  (No news x{pollingInfo.consecutiveEmptyCount})
+                </span>
+              )}
+            </div>
+
             {/* 2. メッセージ表示エリア */}
             <div className="messages-viewport">
               {messages.length === 0 ? (
@@ -1284,7 +1369,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 </div>
               </form>
             </div>
-          </>
+          </div>
         )}
 
         {/* チャットからの連携用モーダル */}
@@ -1305,112 +1390,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         />
       </div>
 
-      {showPins && (
-          <div 
-            className="pinned-messages-modal-overlay" 
-            onClick={() => setShowPins(false)}
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              width: '100vw',
-              height: '100vh',
-              background: 'rgba(0, 0, 0, 0.4)',
-              backdropFilter: 'blur(3px)',
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <div 
-              className="pinned-messages-modal" 
-              onClick={(e) => e.stopPropagation()}
-              style={{ 
-                width: '450px', 
-                maxHeight: '80vh', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                background: 'var(--bg-panel)', 
-                border: '1px solid var(--border-light)',
-                borderRadius: '12px',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
-                overflow: 'hidden'
-              }}
-            >
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold', fontSize: '15px' }}>
-                  <Pin size={16} fill="var(--accent-warning, #f59e0b)" color="var(--accent-warning, #f59e0b)" />
-                  <span>{isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}</span>
-                </div>
-                <button 
-                  onClick={() => setShowPins(false)}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                  <X size={18} />
-                </button>
-              </div>
-              
-              <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
-                {loadingPins ? (
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
-                    <Loader className="spin" size={24} />
-                  </div>
-                ) : pinnedMessages.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                    {isEn ? 'No pinned messages in this channel.' : 'このチャンネルにピン留めされたメッセージはありません。'}
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {pinnedMessages.map((pin) => (
-                      <div 
-                        key={pin.id} 
-                        className="pinned-message-item"
-                        style={{ 
-                          padding: '14px', 
-                          background: 'var(--bg-main)', 
-                          border: '1px solid var(--border-light)', 
-                          borderRadius: '8px',
-                          position: 'relative'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ fontWeight: 'bold', fontSize: '13px' }}>{pin.user?.displayName || 'User'}</span>
-                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatTime(pin.createdAt)}</span>
-                        </div>
-                        
-                        <div 
-                          style={{ fontSize: '13px', wordBreak: 'break-all', color: 'var(--text-primary)', lineHeight: 1.4 }}
-                          dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(pin.content)) }}
-                        />
 
-                        {/* 添付ファイルの簡易表示 */}
-                        {pin.fileUrl && (
-                          <div style={{ marginTop: '6px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Paperclip size={12} />
-                            <a href={pin.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
-                              {pin.fileName || 'Attachment'}
-                            </a>
-                          </div>
-                        )}
-
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                          <span>{isEn ? `Pinned by ${pin.pinnedBy}` : `${pin.pinnedBy} がピン留め`}</span>
-                          <button 
-                            onClick={() => handleTogglePin(pin.id, true)}
-                            style={{ background: 'none', border: 'none', color: 'var(--accent-danger, #ef4444)', cursor: 'pointer', fontSize: '10px', padding: 0 }}
-                          >
-                            {isEn ? 'Unpin' : '解除'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
     </div>
   );

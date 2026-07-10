@@ -156,6 +156,12 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
     fetchMedia();
   }, [fetchMedia]);
 
+  useEffect(() => {
+    if (isChatMode && activeChannelId) {
+      setUploadChannelId(activeChannelId);
+    }
+  }, [isChatMode, activeChannelId]);
+
   // アップロード処理
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -381,7 +387,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
         {/* メインコンテンツ領域（パディング付きでスクロール可能に） */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px', overflowY: 'auto', minHeight: 0 }}>
 
-      <div className="media-library-grid" style={{ display: 'grid', gridTemplateColumns: isChatMode ? '1fr' : '1fr 320px', gap: '24px', flex: 1, minHeight: 0 }}>
+      <div className="media-library-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '24px', flex: 1, minHeight: 0 }}>
         
         {/* メイン一覧エリア */}
         <div className="media-library-list-panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -586,126 +592,125 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
           {showUpload ? <ChevronRight size={16} style={{ transform: 'rotate(90deg)', transition: 'transform 0.2s' }} /> : <ChevronRight size={16} style={{ transition: 'transform 0.2s' }} />}
         </button>
 
-        {/* 右側：新規アップロードパネル - チャットモード以外で表示 */}
-        {!isChatMode && (
-          <div className={`media-library-upload-panel ${showUpload ? 'show' : ''}`} style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-light)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
-            <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Upload size={16} />
-              {t('error') === 'Error' ? 'New Upload' : '新規アップロード'}
-            </h2>
+        {/* 右側：新規アップロードパネル */}
+        <div className={`media-library-upload-panel ${showUpload ? 'show' : ''}`} style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-light)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', marginTop: 0, marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Upload size={16} />
+            {t('error') === 'Error' ? 'New Upload' : '新規アップロード'}
+          </h2>
 
-            <form onSubmit={handleUploadSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* ファイル選択領域 */}
-              <div
-                style={{
-                  border: '2px dashed var(--border-light)',
-                  borderRadius: '8px',
-                  padding: '24px 16px',
-                  textAlign: 'center',
-                  cursor: 'pointer',
-                  background: 'var(--bg-active)'
+          <form onSubmit={handleUploadSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* ファイル選択領域 */}
+            <div
+              style={{
+                border: '2px dashed var(--border-light)',
+                borderRadius: '8px',
+                padding: '24px 16px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: 'var(--bg-active)'
+              }}
+              onClick={() => document.getElementById('media-file-input')?.click()}
+            >
+              <input
+                type="file"
+                id="media-file-input"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setUploadFile(e.target.files[0]);
+                    setUploadSuccess(false);
+                  }
                 }}
-                onClick={() => document.getElementById('media-file-input')?.click()}
-              >
-                <input
-                  type="file"
-                  id="media-file-input"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files.length > 0) {
-                      setUploadFile(e.target.files[0]);
-                      setUploadSuccess(false);
-                    }
-                  }}
-                />
-                <Upload size={32} style={{ color: 'var(--text-muted)', margin: '0 auto 8px auto', display: 'block' }} />
-                {uploadFile ? (
-                  <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {uploadFile.name}
-                  </div>
-                ) : (
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('error') === 'Error' ? 'Click to select file' : 'クリックしてファイルを選択'}</span>
-                )}
-              </div>
-
-              {/* 共有範囲（アップ先） */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>{t('error') === 'Error' ? 'Share Range' : '共有範囲'}</label>
-                <select
-                  value={uploadChannelId}
-                  onChange={(e) => setUploadChannelId(e.target.value)}
-                  style={{
-                    padding: '8px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--border-light)',
-                    background: 'var(--bg-sidebar)',
-                    color: 'var(--text-primary)',
-                    fontSize: '13px',
-                    outline: 'none'
-                  }}
-                >
-                  <option value="workspace">{t('error') === 'Error' ? 'Entire Workspace' : 'ワークスペース全体'}</option>
-                  {channels.filter(c => c.type !== 'dm').map((ch) => (
-                    <option key={ch.id} value={ch.id}>
-                      {t('error') === 'Error' ? `Channel: #${ch.name}` : `チャンネル: #${ch.name}`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ワークスペース全体の場合のプライベート設定 */}
-              {uploadChannelId === 'workspace' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="checkbox"
-                    id="upload-is-private"
-                    checked={uploadIsPrivate}
-                    onChange={(e) => setUploadIsPrivate(e.target.checked)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  <label htmlFor="upload-is-private" style={{ fontSize: '13px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {uploadIsPrivate ? <Lock size={14} /> : <Unlock size={14} />}
-                    <span>{t('error') === 'Error' ? 'Only for me and admins (Private)' : '自分と管理者のみに開示 (プライベート)'}</span>
-                  </label>
+              />
+              <Upload size={32} style={{ color: 'var(--text-muted)', margin: '0 auto 8px auto', display: 'block' }} />
+              {uploadFile ? (
+                <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {uploadFile.name}
                 </div>
+              ) : (
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('error') === 'Error' ? 'Click to select file' : 'クリックしてファイルを選択'}</span>
               )}
+            </div>
 
-              {/* 送信ボタン */}
-              <button
-                type="submit"
-                disabled={!uploadFile || uploading}
+            {/* 共有範囲（アップ先） */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-muted)' }}>{t('error') === 'Error' ? 'Share Range' : '共有範囲'}</label>
+              <select
+                value={uploadChannelId}
+                onChange={(e) => setUploadChannelId(e.target.value)}
+                disabled={isChatMode}
                 style={{
-                  padding: '10px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  background: (!uploadFile || uploading) ? 'var(--border-light)' : 'var(--primary-color)',
-                  color: '#fff',
-                  fontWeight: 'bold',
-                  cursor: (!uploadFile || uploading) ? 'not-allowed' : 'pointer',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border-light)',
+                  background: 'var(--bg-sidebar)',
+                  color: 'var(--text-primary)',
                   fontSize: '13px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
+                  outline: 'none'
                 }}
               >
-                {uploading ? (t('error') === 'Error' ? 'Uploading...' : 'アップロード中...') : (t('error') === 'Error' ? 'Upload' : 'アップロードする')}
-              </button>
+                <option value="workspace">{t('error') === 'Error' ? 'Entire Workspace' : 'ワークスペース全体'}</option>
+                {channels.filter(c => c.type !== 'dm').map((ch) => (
+                  <option key={ch.id} value={ch.id}>
+                    {t('error') === 'Error' ? `Channel: #${ch.name}` : `チャンネル: #${ch.name}`}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-              {uploadSuccess && (
-                <div style={{ color: 'var(--accent-success)', fontSize: '12px', fontWeight: 'bold', textAlign: 'center' }}>
-                  {t('error') === 'Error' ? 'Upload complete!' : 'アップロード完了しました！'}
-                </div>
-              )}
-              
-              {error && (
-                <div style={{ color: 'var(--accent-danger)', fontSize: '12px', fontWeight: 'bold', textAlign: 'center' }}>
-                  {error}
-                </div>
-              )}
-            </form>
-          </div>
-        )}
+            {/* ワークスペース全体の場合のプライベート設定 */}
+            {uploadChannelId === 'workspace' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="upload-is-private"
+                  checked={uploadIsPrivate}
+                  onChange={(e) => setUploadIsPrivate(e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                <label htmlFor="upload-is-private" style={{ fontSize: '13px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  {uploadIsPrivate ? <Lock size={14} /> : <Unlock size={14} />}
+                  <span>{t('error') === 'Error' ? 'Only for me and admins (Private)' : '自分と管理者のみに開示 (プライベート)'}</span>
+                </label>
+              </div>
+            )}
+
+            {/* 送信ボタン */}
+            <button
+              type="submit"
+              disabled={!uploadFile || uploading}
+              style={{
+                padding: '10px',
+                borderRadius: '8px',
+                border: 'none',
+                background: (!uploadFile || uploading) ? 'var(--border-light)' : 'var(--primary-color)',
+                color: '#fff',
+                fontWeight: 'bold',
+                cursor: (!uploadFile || uploading) ? 'not-allowed' : 'pointer',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              {uploading ? (t('error') === 'Error' ? 'Uploading...' : 'アップロード中...') : (t('error') === 'Error' ? 'Upload' : 'アップロードする')}
+            </button>
+
+            {uploadSuccess && (
+              <div style={{ color: 'var(--accent-success)', fontSize: '12px', fontWeight: 'bold', textAlign: 'center' }}>
+                {t('error') === 'Error' ? 'Upload complete!' : 'アップロード完了しました！'}
+              </div>
+            )}
+            
+            {error && (
+              <div style={{ color: 'var(--accent-danger)', fontSize: '12px', fontWeight: 'bold', textAlign: 'center' }}>
+                {error}
+              </div>
+            )}
+          </form>
+        </div>
       </div>
 
       {/* プレビュー詳細モーダル */}
