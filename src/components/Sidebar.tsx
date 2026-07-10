@@ -79,6 +79,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { t } = useLanguage();
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [isDmsExpanded, setIsDmsExpanded] = useState(true);
 
@@ -99,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${showUserMenu ? 'popover-open' : ''}`}>
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${(showUserMenu || showWorkspaceMenu) ? 'popover-open' : ''}`}>
       {/* 1. チャンネル・ユーザー情報列 (全体一列) */}
       <div className="channel-column" style={{ padding: '16px 0 0', minWidth: isCollapsed ? 'auto' : '240px', width: isCollapsed ? 'auto' : '240px' }}>
         
@@ -285,20 +286,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
-              <div style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '8px',
-                background: 'var(--accent-primary)',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontWeight: 'bold',
-                fontSize: '12px'
-              }}>
+              <button
+                type="button"
+                onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  background: 'var(--accent-primary)',
+                  color: '#fff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold',
+                  fontSize: '12px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'opacity 0.2s'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.9'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                title={activeWorkspace?.name || 'Workspace'}
+              >
                 {activeWorkspace?.name ? activeWorkspace.name.substring(0, 2).toUpperCase() : 'WS'}
-              </div>
+              </button>
               {(() => {
                 const hasOtherUnread = workspaces.some((ws: any) => ws.id !== activeWorkspaceId && ws.unreadCount > 0);
                 if (hasOtherUnread) {
@@ -311,12 +323,113 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       height: '8px',
                       borderRadius: '50%',
                       backgroundColor: 'var(--accent-danger)',
-                      border: '1.5px solid var(--bg-sidebar)'
+                      border: '1.5px solid var(--bg-sidebar)',
+                      pointerEvents: 'none'
                     }}></span>
                   );
                 }
                 return null;
               })()}
+
+              {/* ワークスペース切り替えポップオーバーメニュー */}
+              {showWorkspaceMenu && (
+                <div 
+                  className="workspace-popover-menu" 
+                  style={{ 
+                    position: 'absolute', 
+                    top: '0', 
+                    left: '46px', 
+                    zIndex: 100, 
+                    background: 'var(--bg-sidebar)', 
+                    border: '1px solid var(--border-light)', 
+                    borderRadius: '8px', 
+                    padding: '6px 0', 
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                    minWidth: '200px'
+                  }}
+                >
+                  <div style={{ padding: '6px 12px 4px', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--border-light)', marginBottom: '4px' }}>
+                    {t('error') === 'Error' ? 'Switch Workspace' : 'ワークスペース切り替え'}
+                  </div>
+                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                    {workspaces.map((ws: any) => {
+                      const isActive = ws.id === activeWorkspaceId;
+                      return (
+                        <button
+                          key={ws.id}
+                          onClick={() => {
+                            setActiveWorkspaceId(ws.id);
+                            setShowWorkspaceMenu(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: isActive ? 'var(--bg-active)' : 'none',
+                            border: 'none',
+                            color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            fontSize: '13px',
+                            fontWeight: isActive ? 'bold' : 'normal',
+                            transition: 'background 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) e.currentTarget.style.background = 'var(--bg-hover)';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) e.currentTarget.style.background = 'none';
+                          }}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, marginRight: '8px' }}>
+                            {ws.name}
+                          </span>
+                          {ws.unreadCount > 0 && (
+                            <span style={{
+                              width: '6px',
+                              height: '6px',
+                              borderRadius: '50%',
+                              backgroundColor: 'var(--accent-danger)',
+                              display: 'inline-block',
+                              flexShrink: 0
+                            }}></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {currentUserRole !== 'guest' && onOpenCreateWorkspace && (
+                    <button
+                      onClick={() => {
+                        onOpenCreateWorkspace();
+                        setShowWorkspaceMenu(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '10px 12px',
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        borderTop: '1px solid var(--border-light)',
+                        marginTop: '4px'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                    >
+                      <Plus size={14} />
+                      <span>{t('sidebar.addWorkspace')}</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

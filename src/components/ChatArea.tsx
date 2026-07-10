@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Message } from '../hooks/useChat';
-import { Send, Smile, Paperclip, AlertCircle, RefreshCw, Trash2, HelpCircle, X, Loader, MessageSquare, CheckSquare, BookOpen, Menu, Image, Pin, Search, Plus, Upload } from 'lucide-react';
+import { Send, Smile, Paperclip, AlertCircle, RefreshCw, Trash2, HelpCircle, X, Loader, MessageSquare, CheckSquare, BookOpen, Menu, Image, Pin, Search, Plus, Upload, Maximize2, Minimize2 } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { CreateItemModal } from './CreateItemModal';
 import { DocumentPanel } from './DocumentPanel';
@@ -760,8 +760,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           <div 
             style={
               isDocFullScreen 
-                ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: '100%', width: '100%' }
-                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0 }
+                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
+                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
             }
           >
             <DocumentPanel
@@ -777,6 +777,84 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               type="chat"
               lockKey={`channel:${activeChannelId}`}
             />
+            {/* カプセル型サイズ切り替え・閉じるメニュー */}
+            <div 
+              className="document-floating-actions"
+              style={{
+                position: 'absolute',
+                ...(isDocFullScreen ? {
+                  top: '0',
+                  transform: 'translateY(-50%)',
+                } : {
+                  bottom: '0',
+                  transform: 'translateY(50%)',
+                }),
+                right: '24px',
+                zIndex: 1001,
+                display: 'flex',
+                flexDirection: 'row',
+                gap: '8px',
+                alignItems: 'center',
+                background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid var(--border-light)',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                transition: 'all 0.2s ease',
+                opacity: 0.8,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+            >
+              <button
+                onClick={() => setIsDocFullScreen(!isDocFullScreen)}
+                title={isDocFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {isDocFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              
+              <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+              
+              <button
+                onClick={() => {
+                  setShowDoc(false);
+                  setIsDocFullScreen(false);
+                }}
+                title={isEn ? 'Close' : '閉じる'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -785,8 +863,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           <div 
             style={
               isTasksFullScreen 
-                ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: '100%', width: '100%' }
-                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0 }
+                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
+                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
             }
           >
             <ItemsArea
@@ -804,6 +882,84 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               onToggleFullScreen={() => setIsTasksFullScreen(!isTasksFullScreen)}
               isFullScreen={isTasksFullScreen}
             />
+            {/* カプセル型サイズ切り替え・閉じるメニュー */}
+            <div 
+              className="document-floating-actions"
+              style={{
+                position: 'absolute',
+                ...(isTasksFullScreen ? {
+                  top: '0',
+                  transform: 'translateY(-50%)',
+                } : {
+                  bottom: '0',
+                  transform: 'translateY(50%)',
+                }),
+                right: '24px',
+                zIndex: 1001,
+                display: 'flex',
+                flexDirection: 'row',
+                gap: '8px',
+                alignItems: 'center',
+                background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid var(--border-light)',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                transition: 'all 0.2s ease',
+                opacity: 0.8,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+            >
+              <button
+                onClick={() => setIsTasksFullScreen(!isTasksFullScreen)}
+                title={isTasksFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {isTasksFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              
+              <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+              
+              <button
+                onClick={() => {
+                  setShowTasks(false);
+                  setIsTasksFullScreen(false);
+                }}
+                title={isEn ? 'Close' : '閉じる'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
         )}
 
@@ -812,8 +968,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           <div 
             style={
               isMediaFullScreen 
-                ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: '100%', width: '100%' }
-                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0 }
+                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
+                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
             }
           >
             <MediaLibraryArea
@@ -830,6 +986,84 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               isFullScreen={isMediaFullScreen}
               activeChannelId={activeChannelId}
             />
+            {/* カプセル型サイズ切り替え・閉じるメニュー */}
+            <div 
+              className="document-floating-actions"
+              style={{
+                position: 'absolute',
+                ...(isMediaFullScreen ? {
+                  top: '0',
+                  transform: 'translateY(-50%)',
+                } : {
+                  bottom: '0',
+                  transform: 'translateY(50%)',
+                }),
+                right: '24px',
+                zIndex: 1001,
+                display: 'flex',
+                flexDirection: 'row',
+                gap: '8px',
+                alignItems: 'center',
+                background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)',
+                border: '1px solid var(--border-light)',
+                padding: '6px 12px',
+                borderRadius: '20px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                transition: 'all 0.2s ease',
+                opacity: 0.8,
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+            >
+              <button
+                onClick={() => setIsMediaFullScreen(!isMediaFullScreen)}
+                title={isMediaFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                {isMediaFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+              </button>
+              
+              <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+              
+              <button
+                onClick={() => {
+                  setShowMedia(false);
+                  setIsMediaFullScreen(false);
+                }}
+                title={isEn ? 'Close' : '閉じる'}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-primary)',
+                  padding: '6px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
         )}
 

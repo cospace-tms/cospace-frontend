@@ -687,110 +687,10 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         </div>
 
         {/* チャットモード用フローティングアクション */}
-        {isChatMode && (
-          <div 
-            className="document-floating-actions"
-            style={{
-              position: 'absolute',
-              top: '16px',
-              right: '16px',
-              zIndex: 100,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-              alignItems: 'center',
-              background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              border: '1px solid var(--border-light)',
-              padding: '8px',
-              borderRadius: '8px',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-              transition: 'opacity 0.2s ease',
-              opacity: 0.8,
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-          >
-            {/* 1. 追加ボタン */}
-            <button
-              onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-              title={t('error') === 'Error' ? 'New Task' : '新規作成'}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-primary)',
-                padding: '6px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-            >
-              <Plus size={16} />
-            </button>
 
-            {/* 縦配置用の区切り線 */}
-            {(onToggleFullScreen || onClose) && (
-              <div style={{ height: '1px', width: '16px', background: 'var(--border-light)', margin: '2px 0' }} />
-            )}
-
-            {/* 2. 全画面ボタン */}
-            {onToggleFullScreen && (
-              <button
-                onClick={onToggleFullScreen}
-                title={isFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-            )}
-
-            {/* 3. 閉じるボタン */}
-            {onClose && (
-              <button
-                onClick={onClose}
-                title={isEn ? 'Close' : '閉じる'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-        )}
 
       {/* 2. 表示切替タブバー */}
-      <div className="items-view-tabs" style={{ display: 'flex', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '0 24px', flexShrink: 0 }}>
+      <div className="items-view-tabs" style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '0 24px', flexShrink: 0 }}>
         <button
           onClick={() => setView('kanban')}
           style={{
@@ -875,6 +775,32 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
           <Clock size={14} />
           <span>{t('error') === 'Error' ? 'Timeline' : 'タイムライン'}</span>
         </button>
+
+        {/* 新規作成ボタン (チャットモード時のみ表示切替の欄に追加) */}
+        {isChatMode && (
+          <button
+            onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
+            title={t('error') === 'Error' ? 'New Task' : '新規作成'}
+            style={{
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              background: 'var(--accent-primary)',
+              color: '#fff',
+              border: 'none',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500',
+              height: '32px',
+            }}
+          >
+            <Plus size={14} />
+            <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+          </button>
+        )}
       </div>
 
       {/* 2-2. フィルターバー */}

@@ -232,17 +232,17 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
                 right: '16px',
                 zIndex: 100,
                 display: 'flex',
-                flexDirection: 'column',
+                flexDirection: 'row',
                 gap: '8px',
                 alignItems: 'center',
                 background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
                 border: '1px solid var(--border-light)',
-                padding: '8px',
+                padding: '6px 12px',
                 borderRadius: '8px',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
-                transition: 'opacity 0.2s ease',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                transition: 'all 0.2s ease',
                 opacity: 0.8,
               }}
               onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
@@ -286,8 +286,8 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
                     <List size={16} />
                   </button>
 
-                  {/* 縦配置用の区切り線 */}
-                  <div style={{ height: '1px', width: '16px', background: 'var(--border-light)', margin: '2px 0' }} />
+                  {/* 横配置用の区切り線 */}
+                  <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
 
                    {/* 2. 編集ボタン */}
                   <button
@@ -316,54 +316,6 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
                   >
                     <Edit2 size={16} />
                   </button>
-
-                  {/* 3. 全画面ボタン */}
-                  {onToggleFullScreen && (
-                    <button
-                      onClick={onToggleFullScreen}
-                      title={isFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-primary)',
-                        padding: '6px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      {isFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-                    </button>
-                  )}
-
-                  {/* 4. 閉じるボタン */}
-                  {onClose && (
-                    <button
-                      onClick={onClose}
-                      title={t('workspace.close')}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        padding: '6px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                    >
-                      <X size={16} />
-                    </button>
-                  )}
                 </>
               ) : (
                 <>
