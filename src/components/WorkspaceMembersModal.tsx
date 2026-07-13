@@ -583,7 +583,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
         {/* 一時パスワード表示モーダル */}
         {tempPassword && resettingUser && (
-          <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.6)', zIndex: 1100, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setTempPassword(null); setResettingUser(null); }}>
+          <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.6)', zIndex: 10001, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { setTempPassword(null); setResettingUser(null); }}>
             <div className="modal-content settings-modal" style={{ maxWidth: '420px', textAlign: 'center', padding: '24px', background: 'var(--bg-primary)', border: '1px solid var(--border-light)', borderRadius: '8px' }} onClick={(e) => e.stopPropagation()}>
               <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '12px' }}>
                 {t('workspace.tempPwIssued')}
@@ -739,7 +739,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
         {/* パスワードリセット一時パスワードポップアップ */}
         {tempPassword && resettingUser && (
-          <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-overlay" style={{ zIndex: 10001 }}>
             <div className="modal-content" style={{ maxWidth: '400px', width: '90%', padding: '24px' }}>
               <h3>{t('workspace.tempPwIssued')}</h3>
               <p style={{ margin: '12px 0', fontSize: '14px', color: 'var(--text-muted)' }}>

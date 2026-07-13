@@ -288,7 +288,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
               <button
                 type="button"
-                onClick={() => setShowWorkspaceMenu(!showWorkspaceMenu)}
+                onClick={() => {
+                  setShowWorkspaceMenu(!showWorkspaceMenu);
+                  setShowUserMenu(false);
+                }}
                 style={{
                   width: '36px',
                   height: '36px',
@@ -1087,7 +1090,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div 
                   className="user-avatar" 
                   style={{ overflow: 'hidden', width: '32px', height: '32px', cursor: 'pointer' }}
-                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  onClick={() => {
+                    setShowUserMenu(!showUserMenu);
+                    setShowWorkspaceMenu(false);
+                  }}
                 >
                   {currentUser.avatarUrl ? (
                     <img 
@@ -1120,7 +1126,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
                 <div 
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, cursor: 'pointer', overflow: 'hidden' }}
-                  onClick={() => setShowUserMenu(!showUserMenu)}
+                  onClick={() => {
+                    setShowUserMenu(!showUserMenu);
+                    setShowWorkspaceMenu(false);
+                  }}
                 >
                   <div className="user-avatar" style={{ overflow: 'hidden', flexShrink: 0 }}>
                     {currentUser.avatarUrl ? (

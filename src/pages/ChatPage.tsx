@@ -842,169 +842,172 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const activeChannel = channels.find((c) => c.id === activeChannelId) || null;
 
   return (
-    <div className="app-container">
-      {/* 左サイドバー */}
-      <Sidebar
-        onToggleStarChannel={handleToggleStarChannel}
-        workspaces={workspaces}
-        activeWorkspaceId={activeWorkspaceId}
-        setActiveWorkspaceId={(id) => {
-          setActiveWorkspaceId(id);
-        }}
-        channels={channels}
-        activeChannelId={activeChannelId}
-        setActiveChannelId={(id) => {
-          setActiveChannelId(id);
-        }}
-        activeView={activeView}
-        setActiveView={(view) => {
-          setActiveView(view);
-        }}
-        unreadNotificationsCount={unreadNotificationsCount}
-        channelUnreads={channelUnreads}
-        currentUser={currentUser}
-        currentUserRole={currentUserRole}
-        currentUserLedGroups={currentUserLedGroups}
-        onLogout={onLogout}
-        onOpenUserProfile={() => setIsProfileOpen(true)}
-        onOpenWorkspaceMembers={() => {
-          setActiveView('workspace_settings');
-          setActiveChannelId(null);
-        }}
-        onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
-        onOpenCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
-        onOpenCreateChannel={() => setIsCreateChannelOpen(true)}
-        onOpenBrowseChannels={() => setIsBrowseChannelsOpen(true)}
-        onOpenStartDm={() => setIsStartDmOpen(true)}
-        isCollapsed={isCollapsed}
-        setIsCollapsed={setIsCollapsed}
-      />
-
-      {/* モバイルでメニュー展開時のオーバーレイ背景（タップで縮小表示に戻る） */}
-      {!isCollapsed && (
-        <div 
-          className="mobile-sidebar-overlay"
-          onClick={() => setIsCollapsed(true)}
-        />
-      )}
-
-      {/* 中央エリアの条件付きレンダリング */}
-      {activeView === 'dashboard' ? (
-        <DashboardArea
-          currentUserId={currentUser.id}
+    <>
+      <div className="app-container">
+        {/* 左サイドバー */}
+        <Sidebar
+          onToggleStarChannel={handleToggleStarChannel}
           workspaces={workspaces}
-          tasks={dashboardTasks}
-          activities={dashboardActivities}
-          loading={loadingDashboard}
-          onSelectWorkspace={handleSelectWorkspaceFromDashboard}
-          onJumpToLink={handleJumpToLink}
-        />
-      ) : activeView === 'workspace_doc' ? (
-        <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
-          <DocumentPanel
-            title={t('error') === 'Error' ? `${activeWorkspace?.name || 'Workspace'}'s Document` : `${activeWorkspace?.name || 'ワークスペース'} のドキュメント`}
-            initialValue={workspaceDocText}
-            onSave={handleSaveWorkspaceDoc}
-            type="workspace"
-            lockKey={`workspace:${activeWorkspaceId}`}
-          />
-        </div>
-      ) : activeView === 'workspace_settings' ? (
-        <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
-          <WorkspaceMembersModal
-            workspace={activeWorkspace}
-            currentUserRole={currentUserRole}
-            currentUserLedGroups={currentUserLedGroups}
-            onUpdateWorkspace={handleUpdateWorkspace}
-            onDeleteWorkspace={handleDeleteWorkspace}
-            isEmbed={true}
-          />
-        </div>
-      ) : activeView === 'items' ? (
-        <ItemsArea
-          workspaceId={activeWorkspaceId}
-          workspace={activeWorkspace}
-          activeChannelId={activeChannelId}
-          channels={channels}
-          workspaceMembers={workspaceMembers}
-          currentUserId={currentUser.id}
-          highlightItemId={jumpItemId}
-          onClearHighlightItem={() => setJumpItemId(null)}
-        />
-      ) : activeView === 'media' ? (
-        <MediaLibraryArea
-          workspaceId={activeWorkspaceId}
-          currentUserId={currentUser.id}
-          currentUserRole={currentUserRole}
-          channels={channels}
-        />
-      ) : activeView === 'inbox' ? (
-        <InboxArea
-          workspaceId={activeWorkspaceId}
-          notifications={notifications}
-          loading={loadingNotifications}
-          filter={inboxFilter}
-          onFilterChange={(newFilter) => {
-            setInboxFilter(newFilter);
-            loadNotifications(newFilter);
+          activeWorkspaceId={activeWorkspaceId}
+          setActiveWorkspaceId={(id) => {
+            setActiveWorkspaceId(id);
           }}
-          onReadNotification={handleReadNotification}
-          onReadAllNotifications={handleReadAllNotifications}
-          onArchiveNotification={handleArchiveNotification}
-          onJumpToLink={handleJumpToLink}
-        />
-      ) : activeView === 'search' ? (
-        <SearchView
-          workspaceId={activeWorkspaceId}
-          customEmojis={customEmojis}
-          onJumpToMessage={handleJumpToMessage}
-        />
-      ) : activeChannelId && activeChannel ? (
-        <ChatArea
-          channelName={activeChannel.type === 'dm' ? 
-            (() => {
-              const names = activeChannel.name.split(',').map(n => n.trim());
-              const filtered = names.filter(n => n !== currentUser.displayName);
-              return filtered.length > 0 ? filtered.join(', ') : activeChannel.name;
-            })() : activeChannel.name
-          }
-          channelDescription={activeChannel.description || (activeChannel.isPrivate ? (t('error') === 'Error' ? 'Private channel' : 'プライベートチャンネル') : (t('error') === 'Error' ? 'Public channel anyone can join' : '誰でも参加できるパブリックチャンネル'))}
-          messages={messages}
-          currentUserId={currentUser.id}
-          channelMembers={channelMembers}
-          workspaceMembers={workspaceMembers}
-          workspaceId={activeWorkspaceId}
-          activeChannelId={activeChannelId}
           channels={channels}
-          onSendMessage={async (content, fileUrl, fileName, fileSize) => {
-            await sendMessage(content, replyTargetMessage?.id, fileUrl, fileName, fileSize);
-            setReplyTargetMessage(null);
+          activeChannelId={activeChannelId}
+          setActiveChannelId={(id) => {
+            setActiveChannelId(id);
           }}
-          onRetryMessage={retryMessage}
-          onDeleteFailedMessage={deleteFailedMessage}
-          onSetReplyTarget={setReplyTargetMessage}
-          replyTargetMessage={replyTargetMessage}
-          onCancelReply={() => setReplyTargetMessage(null)}
-          onToggleReaction={handleToggleReaction}
-          onToggleLocalPin={toggleLocalPin}
-          pollingInfo={pollingInfo}
+          activeView={activeView}
+          setActiveView={(view) => {
+            setActiveView(view);
+          }}
+          unreadNotificationsCount={unreadNotificationsCount}
+          channelUnreads={channelUnreads}
+          currentUser={currentUser}
           currentUserRole={currentUserRole}
-          workspace={activeWorkspace}
-          customEmojis={customEmojis}
-          fetchCustomEmojis={() => fetchCustomEmojis(activeWorkspaceId!)}
-          targetScrollMessageId={targetScrollMessageId}
-          clearTargetScrollMessageId={() => setTargetScrollMessageId(null)}
-          onJumpToMessage={handleJumpToMessage}
-          onSearchClick={() => {
-            setActiveView('search');
+          currentUserLedGroups={currentUserLedGroups}
+          onLogout={onLogout}
+          onOpenUserProfile={() => setIsProfileOpen(true)}
+          onOpenWorkspaceMembers={() => {
+            setActiveView('workspace_settings');
             setActiveChannelId(null);
           }}
+          onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
+          onOpenCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
+          onOpenCreateChannel={() => setIsCreateChannelOpen(true)}
+          onOpenBrowseChannels={() => setIsBrowseChannelsOpen(true)}
+          onOpenStartDm={() => setIsStartDmOpen(true)}
+          isCollapsed={isCollapsed}
+          setIsCollapsed={setIsCollapsed}
         />
-      ) : (
-        <div className="no-message-selected" style={{ flex: 1 }}>
-          <p>{t('error') === 'Error' ? 'Please select a channel or DM.' : 'チャンネルまたはDMを選択してください。'}</p>
-        </div>
-      )}
+
+        {/* モバイルでメニュー展開時のオーバーレイ背景（タップで縮小表示に戻る） */}
+        {!isCollapsed && (
+          <div 
+            className="mobile-sidebar-overlay"
+            onClick={() => setIsCollapsed(true)}
+          />
+        )}
+
+        {/* 中央エリアの条件付きレンダリング */}
+        {activeView === 'dashboard' ? (
+          <DashboardArea
+            currentUserId={currentUser.id}
+            workspaces={workspaces}
+            tasks={dashboardTasks}
+            activities={dashboardActivities}
+            loading={loadingDashboard}
+            onSelectWorkspace={handleSelectWorkspaceFromDashboard}
+            onJumpToLink={handleJumpToLink}
+          />
+        ) : activeView === 'workspace_doc' ? (
+          <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
+            <DocumentPanel
+              title={t('error') === 'Error' ? `${activeWorkspace?.name || 'Workspace'}'s Document` : `${activeWorkspace?.name || 'ワークスペース'} のドキュメント`}
+              initialValue={workspaceDocText}
+              onSave={handleSaveWorkspaceDoc}
+              type="workspace"
+              lockKey={`workspace:${activeWorkspaceId}`}
+            />
+          </div>
+        ) : activeView === 'workspace_settings' ? (
+          <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
+            <WorkspaceMembersModal
+              workspace={activeWorkspace}
+              currentUserRole={currentUserRole}
+              currentUserLedGroups={currentUserLedGroups}
+              onUpdateWorkspace={handleUpdateWorkspace}
+              onDeleteWorkspace={handleDeleteWorkspace}
+              isEmbed={true}
+            />
+          </div>
+        ) : activeView === 'items' ? (
+          <ItemsArea
+            workspaceId={activeWorkspaceId}
+            workspace={activeWorkspace}
+            activeChannelId={activeChannelId}
+            channels={channels}
+            workspaceMembers={workspaceMembers}
+            currentUserId={currentUser.id}
+            highlightItemId={jumpItemId}
+            onClearHighlightItem={() => setJumpItemId(null)}
+          />
+        ) : activeView === 'media' ? (
+          <MediaLibraryArea
+            workspaceId={activeWorkspaceId}
+            currentUserId={currentUser.id}
+            currentUserRole={currentUserRole}
+            channels={channels}
+          />
+        ) : activeView === 'inbox' ? (
+          <InboxArea
+            workspaceId={activeWorkspaceId}
+            notifications={notifications}
+            loading={loadingNotifications}
+            filter={inboxFilter}
+            onFilterChange={(newFilter) => {
+              setInboxFilter(newFilter);
+              loadNotifications(newFilter);
+            }}
+            onReadNotification={handleReadNotification}
+            onReadAllNotifications={handleReadAllNotifications}
+            onArchiveNotification={handleArchiveNotification}
+            onJumpToLink={handleJumpToLink}
+          />
+        ) : activeView === 'search' ? (
+          <SearchView
+            workspaceId={activeWorkspaceId}
+            customEmojis={customEmojis}
+            onJumpToMessage={handleJumpToMessage}
+          />
+        ) : activeChannelId && activeChannel ? (
+          <ChatArea
+            channelName={activeChannel.type === 'dm' ? 
+              (() => {
+                const names = activeChannel.name.split(',').map(n => n.trim());
+                const filtered = names.filter(n => n !== currentUser.displayName);
+                return filtered.length > 0 ? filtered.join(', ') : activeChannel.name;
+              })() : activeChannel.name
+            }
+            channelDescription={activeChannel.description || (activeChannel.isPrivate ? (t('error') === 'Error' ? 'Private channel' : 'プライベートチャンネル') : (t('error') === 'Error' ? 'Public channel anyone can join' : '誰でも参加できるパブリックチャンネル'))}
+            messages={messages}
+            currentUserId={currentUser.id}
+            channelMembers={channelMembers}
+            workspaceMembers={workspaceMembers}
+            workspaceId={activeWorkspaceId}
+            activeChannelId={activeChannelId}
+            channels={channels}
+            onSendMessage={async (content, fileUrl, fileName, fileSize) => {
+              await sendMessage(content, replyTargetMessage?.id, fileUrl, fileName, fileSize);
+              setReplyTargetMessage(null);
+            }}
+            onRetryMessage={retryMessage}
+            onDeleteFailedMessage={deleteFailedMessage}
+            onSetReplyTarget={setReplyTargetMessage}
+            replyTargetMessage={replyTargetMessage}
+            onCancelReply={() => setReplyTargetMessage(null)}
+            onToggleReaction={handleToggleReaction}
+            onToggleLocalPin={toggleLocalPin}
+            pollingInfo={pollingInfo}
+            currentUserRole={currentUserRole}
+            workspace={activeWorkspace}
+            customEmojis={customEmojis}
+            fetchCustomEmojis={() => fetchCustomEmojis(activeWorkspaceId!)}
+            targetScrollMessageId={targetScrollMessageId}
+            clearTargetScrollMessageId={() => setTargetScrollMessageId(null)}
+            onJumpToMessage={handleJumpToMessage}
+            onSearchClick={() => {
+              setActiveView('search');
+              setActiveChannelId(null);
+            }}
+          />
+        ) : (
+          <div className="no-message-selected" style={{ flex: 1 }}>
+            <p>{t('error') === 'Error' ? 'Please select a channel or DM.' : 'チャンネルまたはDMを選択してください。'}</p>
+          </div>
+        )}
+      </div>
+
       {/* プロフィール設定モーダル */}
       <UserProfileModal
         isOpen={isProfileOpen}
@@ -1062,6 +1065,6 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         onJoinChannel={handleJoinChannel}
         onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
       />
-    </div>
+    </>
   );
 };

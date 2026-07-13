@@ -496,13 +496,11 @@ body {
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
   
-  /* 絶対配置で上部中央にフロート */
-  position: absolute;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  /* 通常配置に変更（中央揃えのブロック要素） */
+  position: relative;
+  margin: 6px auto;
   z-index: 10;
-  pointer-events: none; /* 下の要素の操作を邪魔しないようにする */
+  width: fit-content;
 }
 
 .polling-badge.active {
@@ -872,7 +870,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -1142,6 +1142,26 @@ body {
 .channel-members-trigger:hover {
   background: rgba(255, 255, 255, 0.08);
   border-color: var(--accent-primary);
+}
+
+.channel-pins-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-light);
+  transition: all 0.2s ease;
+  user-select: none;
+  color: var(--text-muted);
+}
+
+.channel-pins-trigger:hover, .channel-pins-trigger.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-warning, #f59e0b);
+  color: var(--accent-warning, #f59e0b);
 }
 
 .avatar-group {
@@ -1697,6 +1717,10 @@ body {
     overflow: hidden;
   }
 
+  .sidebar.popover-open {
+    z-index: 999 !important;
+  }
+
   /* 展開時の幅と浮き出し効果（シャドウ） */
   .sidebar:not(.collapsed) {
     width: 240px !important;
@@ -1781,7 +1805,6 @@ body {
   }
 
   .polling-badge {
-    top: 8px;
     padding: 4px 8px;
     font-size: 10px;
   }
@@ -1802,7 +1825,14 @@ body {
     display: block !important;
   }
 
-
+  /* ピン留めおよびメンバーポップオーバーがサイドバーに重なるのを防ぐ */
+  .pinned-popover,
+  .members-popover {
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
 }
 
 /* PC表示でのモバイル専用ビューセレクト非表示 */

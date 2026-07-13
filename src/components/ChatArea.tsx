@@ -554,6 +554,48 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
 
 
+            {/* ピン留めメッセージトグル */}
+            <div
+              className={`channel-pins-trigger ${showPins ? 'active' : ''}`}
+              onClick={() => {
+                const nextShowPins = !showPins;
+                setShowPins(nextShowPins);
+                if (nextShowPins) {
+                  setShowMembersPopover(false);
+                }
+                setShowDoc(false);
+                setShowTasks(false);
+                setShowMedia(false);
+              }}
+              title={isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}
+            >
+              <Pin size={14} fill={showPins ? "var(--accent-warning, #f59e0b)" : "none"} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                {isEn ? 'Pins' : 'ピン留め'}
+              </span>
+            </div>
+
+            {/* ドキュメントトグル */}
+            <button
+              type="button"
+              className={`input-icon-btn ${showDoc ? 'active' : ''}`}
+              onClick={handleToggleDoc}
+              title={isEn ? 'Channel Document' : 'チャンネルドキュメント'}
+              style={{
+                background: showDoc ? 'var(--bg-active)' : 'transparent',
+                color: showDoc ? 'var(--accent-primary)' : 'var(--text-muted)',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <BookOpen size={18} />
+            </button>
+
             {/* タスク一覧トグル */}
             <button
               type="button"
@@ -594,57 +636,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               }}
             >
               <Image size={18} />
-            </button>
-
-            {/* ピン留めメッセージトグル */}
-            <button
-              type="button"
-              className={`input-icon-btn ${showPins ? 'active' : ''}`}
-              onClick={() => {
-                const nextShowPins = !showPins;
-                setShowPins(nextShowPins);
-                if (nextShowPins) {
-                  setShowMembersPopover(false);
-                }
-                setShowDoc(false);
-                setShowTasks(false);
-                setShowMedia(false);
-              }}
-              title={isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}
-              style={{
-                background: showPins ? 'var(--bg-active)' : 'transparent',
-                color: showPins ? 'var(--accent-warning, #f59e0b)' : 'var(--text-muted)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Pin size={18} />
-            </button>
-
-            {/* ドキュメントトグル */}
-            <button
-              type="button"
-              className={`input-icon-btn ${showDoc ? 'active' : ''}`}
-              onClick={handleToggleDoc}
-              title={isEn ? 'Channel Document' : 'チャンネルドキュメント'}
-              style={{
-                background: showDoc ? 'var(--bg-active)' : 'transparent',
-                color: showDoc ? 'var(--accent-primary)' : 'var(--text-muted)',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '6px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <BookOpen size={18} />
             </button>
           </div>
         </div>
@@ -1070,20 +1061,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         {/* メインチャット表示エリア（ドキュメント/タスク/メディアが全画面表示のときは非表示に） */}
         {!(showDoc && isDocFullScreen) && !(showTasks && isTasksFullScreen) && !(showMedia && isMediaFullScreen) && (
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-            {/* ポーリング監視モニター（チャット欄上部にフロート） */}
-            <div className={`polling-badge ${pollingInfo.isActive ? 'active' : ''}`}>
-              <span>
-                {pollingInfo.isActive 
-                  ? `Syncing (${pollingInfo.intervalTime / 1000}s)` 
-                  : 'Paused'}
-              </span>
-              {pollingInfo.isActive && pollingInfo.consecutiveEmptyCount > 0 && (
-                <span style={{ opacity: 0.7, fontSize: '10px' }}>
-                  (No news x{pollingInfo.consecutiveEmptyCount})
-                </span>
-              )}
-            </div>
-
             {/* 2. メッセージ表示エリア */}
             <div className="messages-viewport">
               {messages.length === 0 ? (
@@ -1419,6 +1396,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 </button>
               </div>
             )}
+
+            {/* ポーリング監視モニター（メッセージエリアと入力欄の間に配置） */}
+            <div className={`polling-badge ${pollingInfo.isActive ? 'active' : ''}`}>
+              <span>
+                {pollingInfo.isActive 
+                  ? `Syncing (${pollingInfo.intervalTime / 1000}s)` 
+                  : 'Paused'}
+              </span>
+              {pollingInfo.isActive && pollingInfo.consecutiveEmptyCount > 0 && (
+                <span style={{ opacity: 0.7, fontSize: '10px' }}>
+                  (No news x{pollingInfo.consecutiveEmptyCount})
+                </span>
+              )}
+            </div>
 
             {/* 3. 送信フォーム */}
             <div className="chat-input-container">
