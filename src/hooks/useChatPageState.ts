@@ -86,10 +86,10 @@ export const useChatPageState = ({
     { id: initialWorkspaceId, name: 'Default Workspace' }
   ]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(() => {
-    return localStorage.getItem(`cospace_last_workspace_${currentUser.id}`) || initialWorkspaceId;
+    return localStorage.getItem(`cohive_last_workspace_${currentUser.id}`) || initialWorkspaceId;
   });
   const [activeView, setActiveView] = useState<'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings'>(() => {
-    const saved = localStorage.getItem(`cospace_last_view_${currentUser.id}`);
+    const saved = localStorage.getItem(`cohive_last_view_${currentUser.id}`);
     const validViews = ['dashboard', 'chat', 'items', 'inbox', 'workspace_doc', 'media', 'workspace_settings'];
     if (saved && validViews.includes(saved)) {
       return saved as any;
@@ -127,8 +127,8 @@ export const useChatPageState = ({
     { id: initialChannelId, name: 'general', isPrivate: false }
   ]);
   const [activeChannelId, setActiveChannelId] = useState<string | null>(() => {
-    const wsId = localStorage.getItem(`cospace_last_workspace_${currentUser.id}`) || initialWorkspaceId;
-    return localStorage.getItem(`cospace_last_channel_${currentUser.id}_${wsId}`) || initialChannelId;
+    const wsId = localStorage.getItem(`cohive_last_workspace_${currentUser.id}`) || initialWorkspaceId;
+    return localStorage.getItem(`cohive_last_channel_${currentUser.id}_${wsId}`) || initialChannelId;
   });
 
   // 通知（受信箱）用ステート
@@ -290,19 +290,19 @@ export const useChatPageState = ({
   // 最後に見ていたワークスペース、ビュー、チャンネルを自動保存
   useEffect(() => {
     if (activeWorkspaceId) {
-      localStorage.setItem(`cospace_last_workspace_${currentUser.id}`, activeWorkspaceId);
+      localStorage.setItem(`cohive_last_workspace_${currentUser.id}`, activeWorkspaceId);
     }
   }, [activeWorkspaceId, currentUser.id]);
 
   useEffect(() => {
     if (activeView) {
-      localStorage.setItem(`cospace_last_view_${currentUser.id}`, activeView);
+      localStorage.setItem(`cohive_last_view_${currentUser.id}`, activeView);
     }
   }, [activeView, currentUser.id]);
 
   useEffect(() => {
     if (activeWorkspaceId && activeChannelId) {
-      localStorage.setItem(`cospace_last_channel_${currentUser.id}_${activeWorkspaceId}`, activeChannelId);
+      localStorage.setItem(`cohive_last_channel_${currentUser.id}_${activeWorkspaceId}`, activeChannelId);
     }
   }, [activeChannelId, activeWorkspaceId, currentUser.id]);
 
@@ -361,7 +361,7 @@ export const useChatPageState = ({
           setChannels(chanResponse.data);
           
           // そのワークスペースで最後に見ていたチャンネルIDを取得
-          const savedChanId = localStorage.getItem(`cospace_last_channel_${currentUser.id}_${activeWorkspaceId}`);
+          const savedChanId = localStorage.getItem(`cohive_last_channel_${currentUser.id}_${activeWorkspaceId}`);
           const hasSavedChan = chanResponse.data.some(c => c.id === savedChanId);
           
           if (hasSavedChan && savedChanId) {
@@ -572,7 +572,7 @@ export const useChatPageState = ({
 
   // タブのタイトルを動的に更新
   useEffect(() => {
-    const defaultTitle = 'cospace';
+    const defaultTitle = 'cohive';
     if (unreadNotificationsCount > 0) {
       document.title = `(${unreadNotificationsCount}) ${defaultTitle}`;
     } else {

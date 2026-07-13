@@ -89,13 +89,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const starredChannels = channels.filter(c => c.isStarred);
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('cospace_theme') as 'light' | 'dark') || 'dark';
+    return (localStorage.getItem('cohive_theme') as 'light' | 'dark') || 'dark';
   });
 
   const toggleTheme = () => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(nextTheme);
-    localStorage.setItem('cospace_theme', nextTheme);
+    localStorage.setItem('cohive_theme', nextTheme);
     document.documentElement.classList.toggle('theme-light', nextTheme === 'light');
   };
 
@@ -108,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed ? (
           <div style={{ padding: '0 16px 16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', marginBottom: '16px' }}>
             <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
-              cospace
+              cohive
             </span>
             <button
               className="input-icon-btn"

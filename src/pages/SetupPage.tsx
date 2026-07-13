@@ -114,7 +114,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onSetupComplete }) => {
     const element = document.createElement("a");
     const file = new Blob([
       `========================================\r\n`,
-      isEn ? `  Cospace Administrator Recovery Code\r\n` : `  Cospace 管理者 リカバリーコード\r\n`,
+      isEn ? `  Cohive Administrator Recovery Code\r\n` : `  Cohive 管理者 リカバリーコード\r\n`,
       `  Keep this file SECURE and CONFIDENTIAL!\r\n`,
       `========================================\r\n\r\n`,
       `Email Address: ${email}\r\n`,
@@ -124,7 +124,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onSetupComplete }) => {
         : `※このリカバリーコードは、パスワードを忘れた際にアカウントを再設定するための唯一のキーです。\r\n※現在メール機能が未設定のデプロイ環境では、パスワードリセット用のメールが届かないため、\r\n  このコードを紛失するとアカウントを復旧できなくなります。\r\n`
     ], { type: 'text/plain;charset=utf-8' });
     element.href = URL.createObjectURL(file);
-    element.download = "cospace_recovery_code.txt";
+    element.download = "cohive_recovery_code.txt";
     document.body.appendChild(element);
     element.click();
     document.body.removeChild(element);
