@@ -251,6 +251,78 @@ function AppContent() {
     }
   };
 
+  // プッシュ通知の購読セットアップ
+  useEffect(() => {
+    if (!session) return;
+
+    const setupPushNotifications = async () => {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Push notifications are not supported in this browser.');
+        return;
+      }
+
+      try {
+        // Service Worker の登録
+        const registration = await navigator.serviceWorker.register('/sw.js');
+
+        // 通知の許可状況を確認し、必要に応じて許可を求める
+        if (Notification.permission === 'default') {
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') {
+            console.log('Push permission denied.');
+            return;
+          }
+        } else if (Notification.permission === 'denied') {
+          console.warn('Push permission is denied by user.');
+          return;
+        }
+
+        // VAPID公開鍵の取得
+        const { publicKey } = await apiClient.get<{ publicKey: string }>('/api/push/vapid-public-key');
+
+        const urlBase64ToUint8Array = (base64String: string) => {
+          const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+          const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+          const rawData = window.atob(base64);
+          const outputArray = new Uint8Array(rawData.length);
+          for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+          }
+          return outputArray;
+        };
+
+        const convertedVapidKey = urlBase64ToUint8Array(publicKey);
+
+        // 購読オブジェクトの取得・作成
+        let subscription = await registration.pushManager.getSubscription();
+
+        if (!subscription) {
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+        }
+
+        // バックエンドにサブスクリプションを送信
+        const subJson = subscription.toJSON();
+        await apiClient.post('/api/push/subscribe', {
+          subscription: {
+            endpoint: subJson.endpoint,
+            keys: {
+              p256dh: subJson.keys?.p256dh,
+              auth: subJson.keys?.auth
+            }
+          }
+        });
+        console.log('Successfully registered push subscription with backend.');
+      } catch (err) {
+        console.error('Failed to setup push notifications:', err);
+      }
+    };
+
+    setupPushNotifications();
+  }, [session]);
+
   // 5. ローディング画面
   if (loading) {
     return (

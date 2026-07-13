@@ -5,6 +5,7 @@ import { useLanguage } from '../utils/i18n';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';
 import { apiClient } from '../utils/apiClient';
+import { createPortal } from 'react-dom';
 
 interface DocumentPanelProps {
   title: string;
@@ -16,6 +17,7 @@ interface DocumentPanelProps {
   onMenuClick?: () => void;
   type?: 'workspace' | 'chat';
   lockKey: string;
+  subheaderLeftPortalNode?: HTMLDivElement | null;
 }
 
 export const DocumentPanel: React.FC<DocumentPanelProps> = ({
@@ -28,6 +30,7 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
   onMenuClick,
   type = 'workspace',
   lockKey,
+  subheaderLeftPortalNode,
 }) => {
   const { t } = useLanguage();
   const [mode, setMode] = useState<'view' | 'edit'>('view');
@@ -223,148 +226,271 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
           {/* 右：本文コンテンツ領域とフローティングアクション */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
             
-            {/* フローティングアクションパネル */}
-            <div 
-              className="document-floating-actions"
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                zIndex: 100,
-                display: 'flex',
-                flexDirection: 'row',
-                gap: '8px',
-                alignItems: 'center',
-                background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                border: '1px solid var(--border-light)',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                transition: 'all 0.2s ease',
-                opacity: 0.8,
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
-            >
-              {lockInfo?.isLocked && (
-                <span 
-                  style={{ 
-                    fontSize: '10px', 
-                    color: 'var(--accent-danger, #ef4444)', 
-                    padding: '2px 4px', 
-                    fontWeight: 'bold',
-                    maxWidth: '120px',
-                    wordBreak: 'break-all',
-                    textAlign: 'center'
-                  }}
-                  title={`${lockInfo.lockedByUserName || ''} さんが編集中`}
-                >
-                  ⚠️ {(lockInfo.lockedByUserName || '').substring(0, 8)}...
-                </span>
-              )}
-              {mode === 'view' ? (
-                <>
-                  {/* 1. 目次トグルボタン */}
-                  <button
-                    onClick={handleToggleToc}
-                    title={isTocOpen ? (t('error') === 'Error' ? 'Close table of contents' : '目次を閉じる') : (t('error') === 'Error' ? 'Open table of contents' : '目次を開く')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: isTocOpen ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
-                      border: 'none',
-                      color: isTocOpen ? 'var(--accent-primary)' : 'var(--text-muted)',
-                      padding: '6px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
+            {/* ポータル経由でサブヘッダーの左側にレンダリングするコンテンツ */}
+            {type === 'chat' && subheaderLeftPortalNode && createPortal(
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {lockInfo?.isLocked && (
+                  <span 
+                    style={{ 
+                      fontSize: '10px', 
+                      color: 'var(--accent-danger, #ef4444)', 
+                      padding: '2px 4px', 
+                      fontWeight: 'bold',
+                      maxWidth: '120px',
+                      wordBreak: 'break-all',
+                      textAlign: 'center'
                     }}
+                    title={`${lockInfo.lockedByUserName || ''} さんが編集中`}
                   >
-                    <List size={16} />
-                  </button>
+                    ⚠️ {(lockInfo.lockedByUserName || '').substring(0, 8)}...
+                  </span>
+                )}
+                {mode === 'view' ? (
+                  <>
+                    {/* 1. 目次トグルボタン */}
+                    <button
+                      onClick={handleToggleToc}
+                      title={isTocOpen ? (t('error') === 'Error' ? 'Close table of contents' : '目次を閉じる') : (t('error') === 'Error' ? 'Open table of contents' : '目次を開く')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isTocOpen ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                        border: 'none',
+                        color: isTocOpen ? 'var(--accent-primary)' : 'var(--text-muted)',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <List size={16} />
+                    </button>
 
-                  {/* 横配置用の区切り線 */}
-                  <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+                    <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
 
-                   {/* 2. 編集ボタン */}
-                  <button
-                    onClick={startEditing}
-                    disabled={!!lockInfo?.isLocked || acquiringLock}
-                    title={lockInfo?.isLocked ? (t('error') === 'Error' ? `${lockInfo.lockedByUserName} is editing` : `${lockInfo.lockedByUserName} さんが編集中のため編集できません`) : (t('error') === 'Error' ? 'Edit document' : 'ドキュメントを編集')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: lockInfo?.isLocked ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
-                      border: 'none',
-                      color: lockInfo?.isLocked ? 'var(--text-muted)' : 'var(--text-primary)',
-                      padding: '6px',
-                      borderRadius: '6px',
-                      cursor: (lockInfo?.isLocked || acquiringLock) ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                      opacity: lockInfo?.isLocked ? 0.5 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!lockInfo?.isLocked) e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!lockInfo?.isLocked) e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
-                    <Edit2 size={16} />
-                  </button>
-                </>
-              ) : (
-                <>
-                  {/* 保存ボタン */}
-                  <button
-                    onClick={handleSave}
-                    disabled={saving}
-                    title={saving ? (t('error') === 'Error' ? 'Saving...' : '保存中...') : t('save')}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'var(--accent-primary)',
-                      border: 'none',
-                      color: '#fff',
-                      padding: '6px',
-                      borderRadius: '6px',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    <Save size={16} />
-                  </button>
+                    {/* 2. 編集ボタン */}
+                    <button
+                      onClick={startEditing}
+                      disabled={!!lockInfo?.isLocked || acquiringLock}
+                      title={lockInfo?.isLocked ? (t('error') === 'Error' ? `${lockInfo.lockedByUserName} is editing` : `${lockInfo.lockedByUserName} さんが編集中のため編集できません`) : (t('error') === 'Error' ? 'Edit document' : 'ドキュメントを編集')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: lockInfo?.isLocked ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                        border: 'none',
+                        color: lockInfo?.isLocked ? 'var(--text-muted)' : 'var(--text-primary)',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        cursor: (lockInfo?.isLocked || acquiringLock) ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        opacity: lockInfo?.isLocked ? 0.5 : 1
+                      }}
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* 保存ボタン */}
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      title={saving ? (t('error') === 'Error' ? 'Saving...' : '保存中...') : t('save')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'var(--accent-primary)',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                      }}
+                    >
+                      <Save size={14} style={{ marginRight: '4px' }} />
+                      <span>{t('save')}</span>
+                    </button>
 
-                  {/* キャンセルボタン */}
-                  <button
-                    onClick={handleCancel}
-                    disabled={saving}
-                    title={t('error') === 'Error' ? 'Cancel changes' : '変更をキャンセル'}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: 'var(--bg-active, rgba(255, 255, 255, 0.05))',
-                      border: '1px solid var(--border-light)',
-                      color: 'var(--text-muted)',
-                      padding: '6px',
-                      borderRadius: '6px',
-                      cursor: saving ? 'not-allowed' : 'pointer',
-                      transition: 'all 0.2s ease',
+                    {/* キャンセルボタン */}
+                    <button
+                      onClick={handleCancel}
+                      disabled={saving}
+                      title={t('error') === 'Error' ? 'Cancel changes' : '変更をキャンセル'}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'var(--bg-active, rgba(255, 255, 255, 0.05))',
+                        border: '1px solid var(--border-light)',
+                        color: 'var(--text-muted)',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                      }}
+                    >
+                      <X size={14} style={{ marginRight: '4px' }} />
+                      <span>{t('error') === 'Error' ? 'Cancel' : 'キャンセル'}</span>
+                    </button>
+                  </>
+                )}
+              </div>,
+              subheaderLeftPortalNode
+            )}
+
+            {/* フローティングアクションパネル - ポータル不使用時のみ表示 */}
+            {!(type === 'chat' && subheaderLeftPortalNode) && (
+              <div 
+                className="document-floating-actions"
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  zIndex: 100,
+                  display: 'flex',
+                  flexDirection: 'row',
+                  gap: '8px',
+                  alignItems: 'center',
+                  background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
+                  backdropFilter: 'blur(8px)',
+                  WebkitBackdropFilter: 'blur(8px)',
+                  border: '1px solid var(--border-light)',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  transition: 'all 0.2s ease',
+                  opacity: 0.8,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+              >
+                {lockInfo?.isLocked && (
+                  <span 
+                    style={{ 
+                      fontSize: '10px', 
+                      color: 'var(--accent-danger, #ef4444)', 
+                      padding: '2px 4px', 
+                      fontWeight: 'bold',
+                      maxWidth: '120px',
+                      wordBreak: 'break-all',
+                      textAlign: 'center'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-panel-hover, rgba(255, 255, 255, 0.1))'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                    title={`${lockInfo.lockedByUserName || ''} さんが編集中`}
                   >
-                    <X size={16} />
-                  </button>
-                </>
-              )}
-            </div>
+                    ⚠️ {(lockInfo.lockedByUserName || '').substring(0, 8)}...
+                  </span>
+                )}
+                {mode === 'view' ? (
+                  <>
+                    {/* 1. 目次トグルボタン */}
+                    <button
+                      onClick={handleToggleToc}
+                      title={isTocOpen ? (t('error') === 'Error' ? 'Close table of contents' : '目次を閉じる') : (t('error') === 'Error' ? 'Open table of contents' : '目次を開く')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isTocOpen ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                        border: 'none',
+                        color: isTocOpen ? 'var(--accent-primary)' : 'var(--text-muted)',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <List size={16} />
+                    </button>
+
+                    {/* 横配置用の区切り線 */}
+                    <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+
+                     {/* 2. 編集ボタン */}
+                    <button
+                      onClick={startEditing}
+                      disabled={!!lockInfo?.isLocked || acquiringLock}
+                      title={lockInfo?.isLocked ? (t('error') === 'Error' ? `${lockInfo.lockedByUserName} is editing` : `${lockInfo.lockedByUserName} さんが編集中のため編集できません`) : (t('error') === 'Error' ? 'Edit document' : 'ドキュメントを編集')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: lockInfo?.isLocked ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                        border: 'none',
+                        color: lockInfo?.isLocked ? 'var(--text-muted)' : 'var(--text-primary)',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        cursor: (lockInfo?.isLocked || acquiringLock) ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        opacity: lockInfo?.isLocked ? 0.5 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!lockInfo?.isLocked) e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!lockInfo?.isLocked) e.currentTarget.style.background = 'transparent';
+                      }}
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* 保存ボタン */}
+                    <button
+                      onClick={handleSave}
+                      disabled={saving}
+                      title={saving ? (t('error') === 'Error' ? 'Saving...' : '保存中...') : t('save')}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'var(--accent-primary)',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <Save size={16} />
+                    </button>
+
+                    {/* キャンセルボタン */}
+                    <button
+                      onClick={handleCancel}
+                      disabled={saving}
+                      title={t('error') === 'Error' ? 'Cancel changes' : '変更をキャンセル'}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'var(--bg-active, rgba(255, 255, 255, 0.05))',
+                        border: '1px solid var(--border-light)',
+                        color: 'var(--text-muted)',
+                        padding: '6px',
+                        borderRadius: '6px',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-panel-hover, rgba(255, 255, 255, 0.1))'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                    >
+                      <X size={16} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+
 
             {/* 本文コンテンツ */}
             <div className="document-body">

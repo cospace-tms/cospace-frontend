@@ -89,6 +89,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [inputText, setInputText] = useState('');
   const isEmojiAdmin = currentUserRole === 'owner' || currentUserRole === 'group_admin';
 
+  // サブヘッダーの左側ポータル用 DOM ノード
+  const [docSubheaderLeftNode, setDocSubheaderLeftNode] = useState<HTMLDivElement | null>(null);
+  const [tasksSubheaderLeftNode, setTasksSubheaderLeftNode] = useState<HTMLDivElement | null>(null);
+  const [mediaSubheaderLeftNode, setMediaSubheaderLeftNode] = useState<HTMLDivElement | null>(null);
+
   // チャット入力用絵文字ピッカー用のステート
   const [showInputEmojiPicker, setShowInputEmojiPicker] = useState(false);
   const [showInputEmojiUploadForm, setShowInputEmojiUploadForm] = useState(false);
@@ -513,68 +518,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-            {/* 参加中メンバーの顔ぶれ */}
-            {channelMembers && channelMembers.length > 0 && (
-              <div 
-                className="channel-members-trigger"
-                onClick={() => {
-                  const nextShow = !showMembersPopover;
-                  setShowMembersPopover(nextShow);
-                  if (nextShow) {
-                    setShowPins(false);
-                  }
-                }}
-                title={isEn ? 'Show members' : 'メンバー一覧を表示'}
-              >
-                <div className="avatar-group">
-                  {channelMembers.slice(0, 3).map((member, idx) => (
-                    <div 
-                      key={member.userId} 
-                      className="avatar-group-item"
-                      style={{ zIndex: 3 - idx }}
-                    >
-                      {member.avatarUrl ? (
-                        <img src={member.avatarUrl} alt={member.displayName} />
-                      ) : (
-                        member.displayName.substring(0, 1).toUpperCase()
-                      )}
-                    </div>
-                  ))}
-                  {channelMembers.length > 3 && (
-                    <div className="avatar-group-item-more">
-                      +{channelMembers.length - 3}
-                    </div>
-                  )}
-                </div>
-                <span className="channel-members-count-text">
-                  {isEn ? (channelMembers.length === 1 ? '1 member' : `${channelMembers.length} members`) : `${channelMembers.length} 人のメンバー`}
-                </span>
-              </div>
-            )}
-
-
-
-            {/* ピン留めメッセージトグル */}
-            <div
-              className={`channel-pins-trigger ${showPins ? 'active' : ''}`}
-              onClick={() => {
-                const nextShowPins = !showPins;
-                setShowPins(nextShowPins);
-                if (nextShowPins) {
-                  setShowMembersPopover(false);
-                }
-                setShowDoc(false);
-                setShowTasks(false);
-                setShowMedia(false);
-              }}
-              title={isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}
-            >
-              <Pin size={14} fill={showPins ? "var(--accent-warning, #f59e0b)" : "none"} style={{ flexShrink: 0 }} />
-              <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
-                {isEn ? 'Pins' : 'ピン留め'}
-              </span>
-            </div>
-
             {/* ドキュメントトグル */}
             <button
               type="button"
@@ -640,211 +583,99 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         </div>
 
-        {/* メンバー一覧ポップオーバー */}
-        {showMembersPopover && channelMembers && channelMembers.length > 0 && (
-          <div className="members-popover">
-            <div className="members-popover-header">
-              <span className="members-popover-title">{isEn ? `Members (${channelMembers.length})` : `メンバー (${channelMembers.length})`}</span>
-              <button 
-                className="members-popover-close"
-                onClick={() => setShowMembersPopover(false)}
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="members-popover-list">
-              {channelMembers.map((member) => (
-                <div key={member.userId} className="members-popover-item">
-                  <div className="member-popover-avatar">
-                    {member.avatarUrl ? (
-                      <img src={member.avatarUrl} alt={member.displayName} />
-                    ) : (
-                      member.displayName.substring(0, 1).toUpperCase()
-                    )}
-                  </div>
-                  <div className="member-popover-info">
-                    <span className="member-popover-name">{member.displayName}</span>
-                    <span className="member-popover-email">{member.email}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ピン留めメッセージポップオーバー */}
-        {showPins && (
-          <div className="pinned-popover">
-            <div className="pinned-popover-header">
-              <div className="pinned-popover-title">
-                <Pin size={16} fill="var(--accent-warning, #f59e0b)" color="var(--accent-warning, #f59e0b)" />
-                <span>{isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}</span>
-              </div>
-              <button 
-                onClick={() => setShowPins(false)}
-                className="members-popover-close"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            
-            <div className="pinned-popover-list">
-              {loadingPins ? (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
-                  <Loader className="spin animate-spin" size={20} />
-                </div>
-              ) : pinnedMessages.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px', fontSize: '13px' }}>
-                  {isEn ? 'No pinned messages in this channel.' : 'ピン留めされたメッセージはありません。'}
-                </div>
-              ) : (
-                pinnedMessages.map((pin) => (
-                  <div 
-                    key={pin.id} 
-                    className="pinned-message-item"
-                    style={{ 
-                      padding: '10px', 
-                      background: 'var(--bg-main)', 
-                      border: '1px solid var(--border-light)', 
-                      borderRadius: '8px',
-                      position: 'relative'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{pin.user?.displayName || 'User'}</span>
-                      <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatTime(pin.createdAt)}</span>
-                    </div>
-                    
-                    <div 
-                      style={{ fontSize: '12px', wordBreak: 'break-all', color: 'var(--text-primary)', lineHeight: 1.4 }}
-                      dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(pin.content)) }}
-                    />
-
-                    {/* 添付ファイルの簡易表示 */}
-                    {pin.fileUrl && (
-                      <div style={{ marginTop: '4px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Paperclip size={10} />
-                        <a href={pin.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
-                          {pin.fileName || 'Attachment'}
-                        </a>
-                      </div>
-                    )}
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '9px', color: 'var(--text-muted)' }}>
-                      <span>{isEn ? `Pinned by ${pin.pinnedBy}` : `${pin.pinnedBy} がピン`}</span>
-                      <button 
-                        onClick={() => handleTogglePin(pin.id, true)}
-                        style={{ background: 'none', border: 'none', color: 'var(--accent-danger, #ef4444)', cursor: 'pointer', fontSize: '9px', padding: 0 }}
-                      >
-                        {isEn ? 'Unpin' : '解除'}
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        )}
-
         {/* チャンネルドキュメント */}
         {showDoc && (
           <div 
             style={
               isDocFullScreen 
-                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
-                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
+                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
+                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
             }
           >
-            <DocumentPanel
-              title={isEn ? `${channelName}'s Document` : `${channelName} のドキュメント`}
-              initialValue={docText}
-              onSave={saveChannelDoc}
-              onClose={() => {
-                setShowDoc(false);
-                setIsDocFullScreen(false);
-              }}
-              onToggleFullScreen={() => setIsDocFullScreen(!isDocFullScreen)}
-              isFullScreen={isDocFullScreen}
-              type="chat"
-              lockKey={`channel:${activeChannelId}`}
-            />
-            {/* カプセル型サイズ切り替え・閉じるメニュー */}
+            {/* サブヘッダー領域（アクションボタンとポータル先） */}
             <div 
-              className="document-floating-actions"
+              className="chat-subheader"
               style={{
-                position: 'absolute',
-                ...(isDocFullScreen ? {
-                  top: '0',
-                  transform: 'translateY(-50%)',
-                } : {
-                  bottom: '0',
-                  transform: 'translateY(50%)',
-                }),
-                right: '24px',
-                zIndex: 1001,
+                height: '48px',
+                borderBottom: '1px solid var(--border-light)',
+                background: 'var(--bg-secondary, rgba(24, 28, 37, 0.5))',
+                padding: '0 24px',
                 display: 'flex',
-                flexDirection: 'row',
-                gap: '8px',
                 alignItems: 'center',
-                background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                border: '1px solid var(--border-light)',
-                padding: '6px 12px',
-                borderRadius: '20px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                transition: 'all 0.2s ease',
-                opacity: 0.8,
+                justifyContent: 'space-between',
+                gap: '8px',
+                flexShrink: 0,
+                zIndex: 10,
               }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
             >
-              <button
-                onClick={() => setIsDocFullScreen(!isDocFullScreen)}
-                title={isDocFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                {isDocFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-              
-              <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
-              
-              <button
-                onClick={() => {
+              {/* 左側：各コンテンツ用のポータル受け皿 */}
+              <div ref={setDocSubheaderLeftNode} style={{ display: 'flex', alignItems: 'center', height: '100%' }} />
+
+              {/* 右側：全画面・閉じるボタン */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={() => setIsDocFullScreen(!isDocFullScreen)}
+                  title={isDocFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  {isDocFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+                
+                <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+                
+                <button
+                  onClick={() => {
+                    setShowDoc(false);
+                    setIsDocFullScreen(false);
+                  }}
+                  title={isEn ? 'Close' : '閉じる'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', minHeight: 0 }}>
+              <DocumentPanel
+                title={isEn ? `${channelName}'s Document` : `${channelName} のドキュメント`}
+                initialValue={docText}
+                onSave={saveChannelDoc}
+                onClose={() => {
                   setShowDoc(false);
                   setIsDocFullScreen(false);
                 }}
-                title={isEn ? 'Close' : '閉じる'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <X size={16} />
-              </button>
+                onToggleFullScreen={() => setIsDocFullScreen(!isDocFullScreen)}
+                isFullScreen={isDocFullScreen}
+                type="chat"
+                lockKey={`channel:${activeChannelId}`}
+                subheaderLeftPortalNode={docSubheaderLeftNode}
+              />
             </div>
           </div>
         )}
@@ -854,102 +685,96 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           <div 
             style={
               isTasksFullScreen 
-                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
-                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
+                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
+                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
             }
           >
-            <ItemsArea
-              workspaceId={workspaceId}
-              workspace={workspace}
-              activeChannelId={activeChannelId}
-              channels={channels}
-              workspaceMembers={workspaceMembers || []}
-              currentUserId={currentUserId}
-              isChatMode={true}
-              onClose={() => {
-                setShowTasks(false);
-                setIsTasksFullScreen(false);
-              }}
-              onToggleFullScreen={() => setIsTasksFullScreen(!isTasksFullScreen)}
-              isFullScreen={isTasksFullScreen}
-            />
-            {/* カプセル型サイズ切り替え・閉じるメニュー */}
+            {/* サブヘッダー領域（アクションボタンとポータル先） */}
             <div 
-              className="document-floating-actions"
+              className="chat-subheader"
               style={{
-                position: 'absolute',
-                ...(isTasksFullScreen ? {
-                  top: '0',
-                  transform: 'translateY(-50%)',
-                } : {
-                  bottom: '0',
-                  transform: 'translateY(50%)',
-                }),
-                right: '24px',
-                zIndex: 1001,
+                height: '48px',
+                borderBottom: '1px solid var(--border-light)',
+                background: 'var(--bg-secondary, rgba(24, 28, 37, 0.5))',
+                padding: '0 24px',
                 display: 'flex',
-                flexDirection: 'row',
-                gap: '8px',
                 alignItems: 'center',
-                background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                border: '1px solid var(--border-light)',
-                padding: '6px 12px',
-                borderRadius: '20px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                transition: 'all 0.2s ease',
-                opacity: 0.8,
+                justifyContent: 'space-between',
+                gap: '8px',
+                flexShrink: 0,
+                zIndex: 10,
               }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
             >
-              <button
-                onClick={() => setIsTasksFullScreen(!isTasksFullScreen)}
-                title={isTasksFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                {isTasksFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-              
-              <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
-              
-              <button
-                onClick={() => {
+              {/* 左側：各コンテンツ用のポータル受け皿 */}
+              <div ref={setTasksSubheaderLeftNode} style={{ display: 'flex', alignItems: 'center', height: '100%' }} />
+
+              {/* 右側：全画面・閉じるボタン */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={() => setIsTasksFullScreen(!isTasksFullScreen)}
+                  title={isTasksFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  {isTasksFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+                
+                <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+                
+                <button
+                  onClick={() => {
+                    setShowTasks(false);
+                    setIsTasksFullScreen(false);
+                  }}
+                  title={isEn ? 'Close' : '閉じる'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', minHeight: 0 }}>
+              <ItemsArea
+                workspaceId={workspaceId}
+                workspace={workspace}
+                activeChannelId={activeChannelId}
+                channels={channels}
+                workspaceMembers={workspaceMembers || []}
+                currentUserId={currentUserId}
+                isChatMode={true}
+                onClose={() => {
                   setShowTasks(false);
                   setIsTasksFullScreen(false);
                 }}
-                title={isEn ? 'Close' : '閉じる'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <X size={16} />
-              </button>
+                onToggleFullScreen={() => setIsTasksFullScreen(!isTasksFullScreen)}
+                isFullScreen={isTasksFullScreen}
+                subheaderLeftPortalNode={tasksSubheaderLeftNode}
+              />
             </div>
           </div>
         )}
@@ -959,101 +784,95 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           <div 
             style={
               isMediaFullScreen 
-                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
-                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
+                ? { position: 'absolute', top: '64px', left: 0, right: 0, bottom: 0, zIndex: 1000, display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', height: 'calc(100% - 64px)', width: '100%' }
+                : { height: '350px', borderBottom: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', flexShrink: 0, position: 'relative', zIndex: 10 }
             }
           >
-            <MediaLibraryArea
-              workspaceId={workspaceId}
-              currentUserId={currentUserId}
-              currentUserRole={currentUserRole}
-              channels={channels}
-              isChatMode={true}
-              onClose={() => {
-                setShowMedia(false);
-                setIsMediaFullScreen(false);
-              }}
-              onToggleFullScreen={() => setIsMediaFullScreen(!isMediaFullScreen)}
-              isFullScreen={isMediaFullScreen}
-              activeChannelId={activeChannelId}
-            />
-            {/* カプセル型サイズ切り替え・閉じるメニュー */}
+            {/* サブヘッダー領域（アクションボタンとポータル先） */}
             <div 
-              className="document-floating-actions"
+              className="chat-subheader"
               style={{
-                position: 'absolute',
-                ...(isMediaFullScreen ? {
-                  top: '0',
-                  transform: 'translateY(-50%)',
-                } : {
-                  bottom: '0',
-                  transform: 'translateY(50%)',
-                }),
-                right: '24px',
-                zIndex: 1001,
+                height: '48px',
+                borderBottom: '1px solid var(--border-light)',
+                background: 'var(--bg-secondary, rgba(24, 28, 37, 0.5))',
+                padding: '0 24px',
                 display: 'flex',
-                flexDirection: 'row',
-                gap: '8px',
                 alignItems: 'center',
-                background: 'var(--bg-panel, rgba(30, 30, 46, 0.85))',
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                border: '1px solid var(--border-light)',
-                padding: '6px 12px',
-                borderRadius: '20px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                transition: 'all 0.2s ease',
-                opacity: 0.8,
+                justifyContent: 'space-between',
+                gap: '8px',
+                flexShrink: 0,
+                zIndex: 10,
               }}
-              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
             >
-              <button
-                onClick={() => setIsMediaFullScreen(!isMediaFullScreen)}
-                title={isMediaFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                {isMediaFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-              </button>
-              
-              <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
-              
-              <button
-                onClick={() => {
+              {/* 左側：各コンテンツ用のポータル受け皿 */}
+              <div ref={setMediaSubheaderLeftNode} style={{ display: 'flex', alignItems: 'center', height: '100%' }} />
+
+              {/* 右側：全画面・閉じるボタン */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button
+                  onClick={() => setIsMediaFullScreen(!isMediaFullScreen)}
+                  title={isMediaFullScreen ? (t('error') === 'Error' ? 'Exit fullscreen' : '通常表示に戻す') : (t('error') === 'Error' ? 'Enter fullscreen' : '全画面表示にする')}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  {isMediaFullScreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                </button>
+                
+                <div style={{ width: '1px', height: '16px', background: 'var(--border-light)', margin: '0 2px' }} />
+                
+                <button
+                  onClick={() => {
+                    setShowMedia(false);
+                    setIsMediaFullScreen(false);
+                  }}
+                  title={isEn ? 'Close' : '閉じる'}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--text-primary)',
+                    padding: '6px',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: 'hidden', display: 'flex', minHeight: 0 }}>
+              <MediaLibraryArea
+                workspaceId={workspaceId}
+                currentUserId={currentUserId}
+                currentUserRole={currentUserRole}
+                channels={channels}
+                isChatMode={true}
+                onClose={() => {
                   setShowMedia(false);
                   setIsMediaFullScreen(false);
                 }}
-                title={isEn ? 'Close' : '閉じる'}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-primary)',
-                  padding: '6px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-active, rgba(255, 255, 255, 0.05))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                <X size={16} />
-              </button>
+                onToggleFullScreen={() => setIsMediaFullScreen(!isMediaFullScreen)}
+                isFullScreen={isMediaFullScreen}
+                activeChannelId={activeChannelId}
+                subheaderLeftPortalNode={mediaSubheaderLeftNode}
+              />
             </div>
           </div>
         )}
@@ -1061,6 +880,205 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         {/* メインチャット表示エリア（ドキュメント/タスク/メディアが全画面表示のときは非表示に） */}
         {!(showDoc && isDocFullScreen) && !(showTasks && isTasksFullScreen) && !(showMedia && isMediaFullScreen) && (
           <div style={{ flex: 1, position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            {/* サブヘッダー専用領域 */}
+            <div 
+              className="chat-subheader"
+              style={{
+                height: '48px',
+                borderBottom: '1px solid var(--border-light)',
+                background: 'var(--bg-secondary, rgba(24, 28, 37, 0.5))',
+                padding: '0 24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                flexShrink: 0,
+                zIndex: 10,
+                position: 'relative'
+              }}
+            >
+              {/* 参加中メンバーの顔ぶれ */}
+              {channelMembers && channelMembers.length > 0 && (
+                <div 
+                  className="channel-members-trigger chat-floating-btn"
+                  onClick={() => {
+                    const nextShow = !showMembersPopover;
+                    setShowMembersPopover(nextShow);
+                    if (nextShow) {
+                      setShowPins(false);
+                    }
+                  }}
+                  title={isEn ? 'Show members' : 'メンバー一覧を表示'}
+                >
+                  <div className="avatar-group">
+                    {channelMembers.slice(0, 3).map((member, idx) => (
+                      <div 
+                        key={member.userId} 
+                        className="avatar-group-item"
+                        style={{ zIndex: 3 - idx }}
+                      >
+                        {member.avatarUrl ? (
+                          <img src={member.avatarUrl} alt={member.displayName} />
+                        ) : (
+                          member.displayName.substring(0, 1).toUpperCase()
+                        )}
+                      </div>
+                    ))}
+                    {channelMembers.length > 3 && (
+                      <div className="avatar-group-item-more">
+                        +{channelMembers.length - 3}
+                      </div>
+                    )}
+                  </div>
+                  <span className="channel-members-count-text">
+                    {isEn ? (channelMembers.length === 1 ? '1 member' : `${channelMembers.length} members`) : `${channelMembers.length} 人のメンバー`}
+                  </span>
+                </div>
+              )}
+
+              {/* ピン留めメッセージトグル */}
+              <div
+                className={`channel-pins-trigger chat-floating-btn ${showPins ? 'active' : ''}`}
+                onClick={() => {
+                  const nextShowPins = !showPins;
+                  setShowPins(nextShowPins);
+                  if (nextShowPins) {
+                    setShowMembersPopover(false);
+                  }
+                  setShowDoc(false);
+                  setShowTasks(false);
+                  setShowMedia(false);
+                }}
+                title={isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}
+              >
+                <Pin size={14} fill={showPins ? "var(--accent-warning, #f59e0b)" : "none"} style={{ flexShrink: 0 }} />
+                <span style={{ fontSize: '12px', fontWeight: 'bold' }}>
+                  {isEn ? 'Pins' : 'ピン留め'}
+                </span>
+              </div>
+            </div>
+
+            {/* メンバー一覧ポップオーバー（サブヘッダー下・左揃え） */}
+            {showMembersPopover && channelMembers && channelMembers.length > 0 && (
+              <div 
+                className="members-popover"
+                style={{
+                  position: 'absolute',
+                  top: '48px',
+                  left: '24px',
+                  zIndex: 100,
+                }}
+              >
+                <div className="members-popover-header">
+                  <span className="members-popover-title">{isEn ? `Members (${channelMembers.length})` : `メンバー (${channelMembers.length})`}</span>
+                  <button 
+                    className="members-popover-close"
+                    onClick={() => setShowMembersPopover(false)}
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="members-popover-list">
+                  {channelMembers.map((member) => (
+                    <div key={member.userId} className="members-popover-item">
+                      <div className="member-popover-avatar">
+                        {member.avatarUrl ? (
+                          <img src={member.avatarUrl} alt={member.displayName} />
+                        ) : (
+                          member.displayName.substring(0, 1).toUpperCase()
+                        )}
+                      </div>
+                      <div className="member-popover-info">
+                        <span className="member-popover-name">{member.displayName}</span>
+                        <span className="member-popover-email">{member.email}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ピン留めメッセージポップオーバー（サブヘッダー下・左揃え） */}
+            {showPins && (
+              <div 
+                className="pinned-popover"
+                style={{
+                  position: 'absolute',
+                  top: '48px',
+                  left: '24px',
+                  zIndex: 100,
+                }}
+              >
+                <div className="pinned-popover-header">
+                  <div className="pinned-popover-title">
+                    <Pin size={16} fill="var(--accent-warning, #f59e0b)" color="var(--accent-warning, #f59e0b)" />
+                    <span>{isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}</span>
+                  </div>
+                  <button 
+                    onClick={() => setShowPins(false)}
+                    className="members-popover-close"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+                
+                <div className="pinned-popover-list">
+                  {loadingPins ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '16px' }}>
+                      <Loader className="spin animate-spin" size={20} />
+                    </div>
+                  ) : pinnedMessages.length === 0 ? (
+                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '16px', fontSize: '13px' }}>
+                      {isEn ? 'No pinned messages in this channel.' : 'ピン留めされたメッセージはありません。'}
+                    </div>
+                  ) : (
+                    pinnedMessages.map((pin) => (
+                      <div 
+                        key={pin.id} 
+                        className="pinned-message-item"
+                        style={{ 
+                          padding: '10px', 
+                          background: 'var(--bg-main)', 
+                          border: '1px solid var(--border-light)', 
+                          borderRadius: '8px',
+                          position: 'relative'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                          <span style={{ fontWeight: 'bold', fontSize: '12px' }}>{pin.user?.displayName || 'User'}</span>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{formatTime(pin.createdAt)}</span>
+                        </div>
+                        
+                        <div 
+                          style={{ fontSize: '12px', wordBreak: 'break-all', color: 'var(--text-primary)', lineHeight: 1.4 }}
+                          dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(pin.content)) }}
+                        />
+
+                        {/* 添付ファイルの簡易表示 */}
+                        {pin.fileUrl && (
+                          <div style={{ marginTop: '4px', fontSize: '10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <Paperclip size={10} />
+                            <a href={pin.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'none' }}>
+                              {pin.fileName || 'Attachment'}
+                            </a>
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px', paddingTop: '6px', borderTop: '1px solid rgba(255,255,255,0.05)', fontSize: '9px', color: 'var(--text-muted)' }}>
+                          <span>{isEn ? `Pinned by ${pin.pinnedBy}` : `${pin.pinnedBy} がピン`}</span>
+                          <button 
+                            onClick={() => handleTogglePin(pin.id, true)}
+                            style={{ background: 'none', border: 'none', color: 'var(--accent-danger, #ef4444)', cursor: 'pointer', fontSize: '9px', padding: 0 }}
+                          >
+                            {isEn ? 'Unpin' : '解除'}
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* 2. メッセージ表示エリア */}
             <div className="messages-viewport">
               {messages.length === 0 ? (

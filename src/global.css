@@ -2215,3 +2215,51 @@ body {
 .theme-light .message-card.pinned .message-bubble {
   background-color: rgba(245, 158, 11, 0.05) !important;
 }
+
+/* ==========================================================================
+   💬 Chat Floating Actions (Float Buttons for Members and Pins)
+   ========================================================================== */
+.chat-floating-btn {
+  background: var(--bg-panel, rgba(30, 30, 46, 0.85)) !important;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  border: 1px solid var(--border-light) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.chat-floating-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--accent-primary);
+  background: var(--bg-sidebar) !important;
+}
+
+.channel-pins-trigger.chat-floating-btn:hover,
+.channel-pins-trigger.chat-floating-btn.active {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25), 0 0 0 1px var(--accent-warning, #f59e0b);
+}
+
+/* ==========================================================================
+   📸 Media Library Upload Responsive Adjustments
+   ========================================================================== */
+/* PC表示時はスマホ専用アップロードボタンを非表示 */
+@media (min-width: 768px) {
+  .media-upload-btn-mobile-only {
+    display: none !important;
+  }
+}
+
+/* モバイル表示時のアップロードモード連動 */
+@media (max-width: 767px) {
+  /* アップロードパネルが表示されている場合、一覧を非表示にする */
+  .media-library-grid.upload-mode-active .media-library-list-panel {
+    display: none !important;
+  }
+  
+  /* ポータルボタンを使用するため、従来のインラインアコーディオン開閉ボタンを非表示化 */
+  .media-upload-toggle-btn {
+    display: none !important;
+  }
+}
+
+

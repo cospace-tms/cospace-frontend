@@ -4,6 +4,7 @@ import { apiClient } from '../utils/apiClient';
 import { CreateItemModal } from './CreateItemModal';
 import { stripMarkdown } from '../utils/markdown';
 import { useLanguage } from '../utils/i18n';
+import { createPortal } from 'react-dom';
 
 interface Channel {
   id: string;
@@ -52,6 +53,7 @@ interface ItemsAreaProps {
   onClose?: () => void;
   onToggleFullScreen?: () => void;
   isFullScreen?: boolean;
+  subheaderLeftPortalNode?: HTMLDivElement | null;
 }
 
 export const ItemsArea: React.FC<ItemsAreaProps> = ({
@@ -68,6 +70,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
   onClose,
   onToggleFullScreen,
   isFullScreen = false,
+  subheaderLeftPortalNode,
 }) => {
   const { t } = useLanguage();
   const [view, setView] = useState<'kanban' | 'calendar' | 'list' | 'timeline'>('kanban');
@@ -633,175 +636,251 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%', minWidth: 0, position: 'relative' }}>
       <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' }}>
-        {/* 1. タイトルヘッダー */}
-        <div className={`chat-header ${isChatMode ? 'items-chat-header-mobile' : ''}`}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
-            {onMenuClick && (
-              <button className="mobile-menu-trigger" onClick={onMenuClick} style={{ color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none', padding: '4px', display: 'flex', alignItems: 'center', marginRight: '8px' }}>
-                <Menu size={20} />
-              </button>
-            )}
-            {!isChatMode && (
-              <>
-                <h1 className="channel-info-title" style={{ margin: 0 }}>{t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定一覧'}</h1>
-                <span className="channel-info-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {t('error') === 'Error' ? 'Centralized management of workspace progress, Kanban, and calendar.' : 'ワークスペース内の進捗、かんばん、予定表を一元管理します。'}
-                </span>
-              </>
-            )}
-          </div>
+        {/* 1. タイトルヘッダー - ポータルを使用しないときのみ、または非チャットモードのときのみ表示 */}
+        {!(isChatMode && subheaderLeftPortalNode) && (
+          <div className={`chat-header ${isChatMode ? 'items-chat-header-mobile' : ''}`}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+              {onMenuClick && (
+                <button className="mobile-menu-trigger" onClick={onMenuClick} style={{ color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none', padding: '4px', display: 'flex', alignItems: 'center', marginRight: '8px' }}>
+                  <Menu size={20} />
+                </button>
+              )}
+              {!isChatMode && (
+                <>
+                  <h1 className="channel-info-title" style={{ margin: 0 }}>{t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定一覧'}</h1>
+                  <span className="channel-info-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {t('error') === 'Error' ? 'Centralized management of workspace progress, Kanban, and calendar.' : 'ワークスペース内の進捗、かんばん、予定表を一元管理します。'}
+                  </span>
+                </>
+              )}
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-            {/* モバイル用表示切替セレクトボックス */}
-            <select
-              value={view}
-              onChange={(e) => setView(e.target.value as any)}
-              className="items-view-select-mobile"
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+              {/* ポータルを使用しないときのみ、ヘッダーにモバイルセレクトや追加ボタンを表示 */}
+              {/* モバイル用表示切替セレクトボックス */}
+              <select
+                value={view}
+                onChange={(e) => setView(e.target.value as any)}
+                className="items-view-select-mobile"
+                style={{
+                  background: 'var(--bg-sidebar)',
+                  border: '1px solid var(--border-light)',
+                  borderRadius: '6px',
+                  color: 'var(--text-primary)',
+                  padding: '6px 10px',
+                  fontSize: '12px',
+                  outline: 'none',
+                  cursor: 'pointer',
+                }}
+              >
+                <option value="kanban">{t('error') === 'Error' ? 'Kanban' : 'かんばん'}</option>
+                <option value="list">{t('error') === 'Error' ? 'List' : 'リスト'}</option>
+                <option value="calendar">{t('error') === 'Error' ? 'Calendar' : 'カレンダー'}</option>
+                <option value="timeline">{t('error') === 'Error' ? 'Timeline' : 'タイムライン'}</option>
+              </select>
+
+              {/* 追加ボタン */}
+              <button
+                className={`btn btn-primary ${isChatMode ? 'items-mobile-add-btn' : ''}`}
+                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '6px', background: 'var(--accent-primary)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
+                onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
+              >
+                <Plus size={16} />
+                <span className="channel-members-count-text">{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* サブヘッダー左側のポータル表示（チャットモード時かつノードが存在するとき） */}
+        {isChatMode && subheaderLeftPortalNode && createPortal(
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', height: '100%' }}>
+            {/* ビュー切替ボタン群（タブ風） */}
+            <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.15)', padding: '2px', borderRadius: '6px' }}>
+              {(['kanban', 'list', 'calendar', 'timeline'] as const).map((v) => {
+                const isActive = view === v;
+                const getIcon = () => {
+                  switch(v) {
+                    case 'kanban': return <Grid size={13} />;
+                    case 'list': return <List size={13} />;
+                    case 'calendar': return <CalendarIcon size={13} />;
+                    case 'timeline': return <Clock size={13} />;
+                  }
+                };
+                const getLabel = () => {
+                  switch(v) {
+                    case 'kanban': return t('error') === 'Error' ? 'Kanban' : 'かんばん';
+                    case 'list': return t('error') === 'Error' ? 'List' : 'リスト';
+                    case 'calendar': return t('error') === 'Error' ? 'Calendar' : 'カレンダー';
+                    case 'timeline': return t('error') === 'Error' ? 'Timeline' : 'タイムライン';
+                  }
+                };
+                return (
+                  <button
+                    key={v}
+                    onClick={() => setView(v)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '4px 10px',
+                      fontSize: '11px',
+                      fontWeight: isActive ? '600' : '500',
+                      color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                      background: isActive ? 'var(--bg-panel, rgba(30, 30, 46, 0.85))' : 'transparent',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {getIcon()}
+                    <span>{getLabel()}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* 新規作成ボタン */}
+            <button
+              onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
               style={{
-                background: 'var(--bg-sidebar)',
-                border: '1px solid var(--border-light)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
                 borderRadius: '6px',
-                color: 'var(--text-primary)',
-                padding: '6px 10px',
-                fontSize: '12px',
-                outline: 'none',
+                background: 'var(--accent-primary)',
+                color: '#fff',
+                border: 'none',
                 cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
               }}
             >
-              <option value="kanban">{t('error') === 'Error' ? 'Kanban' : 'かんばん'}</option>
-              <option value="list">{t('error') === 'Error' ? 'List' : 'リスト'}</option>
-              <option value="calendar">{t('error') === 'Error' ? 'Calendar' : 'カレンダー'}</option>
-              <option value="timeline">{t('error') === 'Error' ? 'Timeline' : 'タイムライン'}</option>
-            </select>
-
-            {/* 追加ボタン */}
-            <button
-              className={`btn btn-primary ${isChatMode ? 'items-mobile-add-btn' : ''}`}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '6px', background: 'var(--accent-primary)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
-              onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-            >
-              <Plus size={16} />
-              <span className="channel-members-count-text">{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+              <Plus size={14} />
+              <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
             </button>
-          </div>
-        </div>
-
-        {/* チャットモード用フローティングアクション */}
-
-
-      {/* 2. 表示切替タブバー */}
-      <div className="items-view-tabs" style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '0 24px', flexShrink: 0 }}>
-        <button
-          onClick={() => setView('kanban')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 16px',
-            fontSize: '13px',
-            fontWeight: view === 'kanban' ? '600' : '500',
-            color: view === 'kanban' ? 'var(--accent-primary)' : 'var(--text-muted)',
-            border: 'none',
-            background: 'none',
-            borderBottom: view === 'kanban' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            marginBottom: '-1px'
-          }}
-        >
-          <Grid size={14} />
-          <span>{t('error') === 'Error' ? 'Kanban' : 'かんばん'}</span>
-        </button>
-        <button
-          onClick={() => setView('list')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 16px',
-            fontSize: '13px',
-            fontWeight: view === 'list' ? '600' : '500',
-            color: view === 'list' ? 'var(--accent-primary)' : 'var(--text-muted)',
-            border: 'none',
-            background: 'none',
-            borderBottom: view === 'list' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            marginBottom: '-1px'
-          }}
-        >
-          <List size={14} />
-          <span>{t('error') === 'Error' ? 'List' : 'リスト'}</span>
-        </button>
-        <button
-          onClick={() => setView('calendar')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 16px',
-            fontSize: '13px',
-            fontWeight: view === 'calendar' ? '600' : '500',
-            color: view === 'calendar' ? 'var(--accent-primary)' : 'var(--text-muted)',
-            border: 'none',
-            background: 'none',
-            borderBottom: view === 'calendar' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            marginBottom: '-1px'
-          }}
-        >
-          <CalendarIcon size={14} />
-          <span>{t('error') === 'Error' ? 'Calendar' : 'カレンダー'}</span>
-        </button>
-        <button
-          onClick={() => setView('timeline')}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px 16px',
-            fontSize: '13px',
-            fontWeight: view === 'timeline' ? '600' : '500',
-            color: view === 'timeline' ? 'var(--accent-primary)' : 'var(--text-muted)',
-            border: 'none',
-            background: 'none',
-            borderBottom: view === 'timeline' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            marginBottom: '-1px'
-          }}
-        >
-          <Clock size={14} />
-          <span>{t('error') === 'Error' ? 'Timeline' : 'タイムライン'}</span>
-        </button>
-
-        {/* 新規作成ボタン (チャットモード時のみ表示切替の欄に追加) */}
-        {isChatMode && (
-          <button
-            onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-            title={t('error') === 'Error' ? 'New Task' : '新規作成'}
-            style={{
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 12px',
-              borderRadius: '6px',
-              background: 'var(--accent-primary)',
-              color: '#fff',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: '500',
-              height: '32px',
-            }}
-          >
-            <Plus size={14} />
-            <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
-          </button>
+          </div>,
+          subheaderLeftPortalNode
         )}
-      </div>
+
+        {/* 2. 表示切替タブバー - ポータルを使用しないときのみ表示 */}
+        {!(isChatMode && subheaderLeftPortalNode) && (
+          <div className="items-view-tabs" style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '0 24px', flexShrink: 0 }}>
+            <button
+              onClick={() => setView('kanban')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: view === 'kanban' ? '600' : '500',
+                color: view === 'kanban' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                border: 'none',
+                background: 'none',
+                borderBottom: view === 'kanban' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                marginBottom: '-1px'
+              }}
+            >
+              <Grid size={14} />
+              <span>{t('error') === 'Error' ? 'Kanban' : 'かんばん'}</span>
+            </button>
+            <button
+              onClick={() => setView('list')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: view === 'list' ? '600' : '500',
+                color: view === 'list' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                border: 'none',
+                background: 'none',
+                borderBottom: view === 'list' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                marginBottom: '-1px'
+              }}
+            >
+              <List size={14} />
+              <span>{t('error') === 'Error' ? 'List' : 'リスト'}</span>
+            </button>
+            <button
+              onClick={() => setView('calendar')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: view === 'calendar' ? '600' : '500',
+                color: view === 'calendar' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                border: 'none',
+                background: 'none',
+                borderBottom: view === 'calendar' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                marginBottom: '-1px'
+              }}
+            >
+              <CalendarIcon size={14} />
+              <span>{t('error') === 'Error' ? 'Calendar' : 'カレンダー'}</span>
+            </button>
+            <button
+              onClick={() => setView('timeline')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: view === 'timeline' ? '600' : '500',
+                color: view === 'timeline' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                border: 'none',
+                background: 'none',
+                borderBottom: view === 'timeline' ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                marginBottom: '-1px'
+              }}
+            >
+              <Clock size={14} />
+              <span>{t('error') === 'Error' ? 'Timeline' : 'タイムライン'}</span>
+            </button>
+
+            {/* 新規作成ボタン (チャットモード時のみ表示切替の欄に追加) */}
+            {isChatMode && (
+              <button
+                onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
+                title={t('error') === 'Error' ? 'New Task' : '新規作成'}
+                style={{
+                  marginLeft: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  background: 'var(--accent-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  height: '32px',
+                }}
+              >
+                <Plus size={14} />
+                <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+              </button>
+          )}
+        </div>
+      )}
 
       {/* 2-2. フィルターバー */}
       <div className="items-filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 24px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-light)', flexShrink: 0, flexWrap: 'wrap' }}>
