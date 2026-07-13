@@ -38,14 +38,14 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
   const [toc, setToc] = useState<TocItem[]>([]);
   const [saving, setSaving] = useState(false);
   const [isTocOpen, setIsTocOpen] = useState<boolean>(() => {
-    const saved = localStorage.getItem('cospace_toc_open');
+    const saved = localStorage.getItem('cohive_toc_open');
     return saved !== null ? saved === 'true' : true;
   });
 
   const handleToggleToc = () => {
     setIsTocOpen((prev) => {
       const next = !prev;
-      localStorage.setItem('cospace_toc_open', String(next));
+      localStorage.setItem('cohive_toc_open', String(next));
       return next;
     });
   };
@@ -106,7 +106,7 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
         fetch(`/api/document-locks/${encodeURIComponent(lockKey)}/release`, {
           method: 'POST',
           headers: {
-            'X-User-Id': localStorage.getItem('cospace_user_id') || '',
+            'X-User-Id': localStorage.getItem('cohive_user_id') || '',
           },
           keepalive: true,
         });

@@ -42,13 +42,13 @@ function AppContent() {
     const checkSetupStatus = async () => {
       try {
         // テーマの初期適用
-        const cachedTheme = localStorage.getItem('cospace_theme') || 'dark';
+        const cachedTheme = localStorage.getItem('cohive_theme') || 'dark';
         document.documentElement.classList.toggle('theme-light', cachedTheme === 'light');
 
         // サイレントリフレッシュによりアクセストークンを再取得してログイン状態を復元
         try {
           const token = await apiClient.refreshAccessToken();
-          const cachedSession = localStorage.getItem('cospace_session');
+          const cachedSession = localStorage.getItem('cohive_session');
           if (cachedSession) {
             const parsed = JSON.parse(cachedSession) as UserSession;
             apiClient.setToken(token);
@@ -62,7 +62,7 @@ function AppContent() {
         } catch (refreshErr) {
           // リフレッシュに失敗した場合は未ログイン状態とする
           console.log('No active session found or refresh failed:', refreshErr);
-          localStorage.removeItem('cospace_session');
+          localStorage.removeItem('cohive_session');
           apiClient.setToken(null);
           apiClient.setWorkspaceId(null);
           apiClient.setUserId(null);
@@ -113,7 +113,7 @@ function AppContent() {
       language: data.language,
     };
 
-    localStorage.setItem('cospace_session', JSON.stringify(newSession));
+    localStorage.setItem('cohive_session', JSON.stringify(newSession));
     apiClient.setWorkspaceId(data.workspaceId);
     apiClient.setUserId(data.userId);
     if (data.token) {
@@ -139,7 +139,7 @@ function AppContent() {
       }>('/api/auth/login', { email, password });
 
       if (response.success && response.data) {
-        localStorage.setItem('cospace_session', JSON.stringify(response.data));
+        localStorage.setItem('cohive_session', JSON.stringify(response.data));
         apiClient.setWorkspaceId(response.data.workspaceId);
         apiClient.setUserId(response.data.id);
         if (response.data.token) {
@@ -187,7 +187,7 @@ function AppContent() {
         
         // ログイン処理と同様にセッションを確立
         setTimeout(() => {
-          localStorage.setItem('cospace_session', JSON.stringify(response.data));
+          localStorage.setItem('cohive_session', JSON.stringify(response.data));
           apiClient.setWorkspaceId(response.data.workspaceId);
           apiClient.setUserId(response.data.id);
           if (response.data.token) {
@@ -223,7 +223,7 @@ function AppContent() {
       } catch (err) {
         console.warn('Backend logout failed:', err);
       }
-      localStorage.removeItem('cospace_session');
+      localStorage.removeItem('cohive_session');
       apiClient.setWorkspaceId(null);
       apiClient.setUserId(null);
       apiClient.setToken(null);
@@ -244,7 +244,7 @@ function AppContent() {
   const handleUpdateSession = (displayName: string, avatarUrl: string | null, language?: string) => {
     if (!session) return;
     const newSession = { ...session, displayName, avatarUrl, language };
-    localStorage.setItem('cospace_session', JSON.stringify(newSession));
+    localStorage.setItem('cohive_session', JSON.stringify(newSession));
     setSession(newSession);
     if (language === 'ja' || language === 'en') {
       setLanguage(language);

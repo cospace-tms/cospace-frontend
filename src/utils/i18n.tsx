@@ -21,7 +21,7 @@ export const translations = {
     "connection.retry": "再試行する",
 
     // ログイン画面 / Login
-    "login.title": "cospace ログイン",
+    "login.title": "cohive ログイン",
     "login.subtitle": "セットアップ済みのユーザーアカウントでログインします。",
     "login.email": "メールアドレス",
     "login.password": "パスワード",
@@ -44,7 +44,7 @@ export const translations = {
     "recovery.backToLogin": "ログイン画面に戻る",
 
     // セットアップ画面 / Setup Page
-    "setup.title": "cospace セットアップ",
+    "setup.title": "cohive セットアップ",
     "setup.subtitle": "最初の最高管理者 (Owner) とワークスペースを作成します。",
     "setup.displayName": "表示名 (Display Name)",
     "setup.email": "メールアドレス",
@@ -150,7 +150,7 @@ export const translations = {
     "connection.retry": "Retry",
 
     // ログイン画面 / Login
-    "login.title": "cospace Login",
+    "login.title": "cohive Login",
     "login.subtitle": "Login with your configured user account.",
     "login.email": "Email Address",
     "login.password": "Password",
@@ -173,7 +173,7 @@ export const translations = {
     "recovery.backToLogin": "Back to Login",
 
     // セットアップ画面 / Setup Page
-    "setup.title": "cospace Setup",
+    "setup.title": "cohive Setup",
     "setup.subtitle": "Create the first owner account and workspace.",
     "setup.displayName": "Display Name",
     "setup.email": "Email Address",
@@ -273,7 +273,7 @@ const LanguageContext = React.createContext<LanguageContextProps | undefined>(un
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem('cospace_language');
+    const saved = localStorage.getItem('cohive_language');
     if (saved === 'ja' || saved === 'en') return saved;
     // Fallback to browser language
     const browserLang = navigator.language.split('-')[0];
@@ -282,7 +282,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem('cospace_language', lang);
+    localStorage.setItem('cohive_language', lang);
   };
 
   const t = (key: keyof typeof translations['ja']): string => {

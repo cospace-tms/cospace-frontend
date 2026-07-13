@@ -303,7 +303,7 @@ export const SmtpSettingsTab: React.FC = () => {
             <input
               type="text"
               className="form-input"
-              placeholder="Cospace Notification"
+              placeholder="Cohive Notification"
               value={fromName}
               onChange={(e) => setFromName(e.target.value)}
               disabled={loading}
