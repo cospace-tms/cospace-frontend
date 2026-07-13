@@ -145,7 +145,7 @@ export const DashboardArea: React.FC<DashboardAreaProps> = ({
               <Menu size={20} />
             </button>
           )}
-          <h1 className="channel-info-title" style={{ margin: 0 }}>🏠 {isEn ? 'Home' : 'ホーム'}</h1>
+          <h1 className="channel-info-title" style={{ margin: 0 }}>{isEn ? 'Home' : 'ホーム'}</h1>
           <span className="channel-info-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {isEn ? 'Overview of your tasks, schedule, and recent events across the organization.' : '全ワークスペースを横断して、あなたの予定やタスク、組織内の最新のアクティビティを一覧します。'}
           </span>

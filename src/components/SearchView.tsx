@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Search, Loader, BookOpen, Clock, Pin } from 'lucide-react';
+import { Search, Loader, BookOpen, Clock, Pin, Menu } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
 
@@ -7,12 +7,14 @@ interface SearchViewProps {
   workspaceId: string | null;
   customEmojis: any[];
   onJumpToMessage?: (channelId: string, messageId: string) => void;
+  onMenuClick?: () => void;
 }
 
 export const SearchView: React.FC<SearchViewProps> = ({
   workspaceId,
   customEmojis = [],
   onJumpToMessage,
+  onMenuClick,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
@@ -69,47 +71,106 @@ export const SearchView: React.FC<SearchViewProps> = ({
 
   return (
     <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-main)', overflow: 'hidden' }}>
-      {/* ヘッダーエリア */}
-      <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border-light)', flexShrink: 0 }}>
-        <h1 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-          <Search size={22} color="var(--accent-primary)" />
-          {isEn ? 'Workspace Search' : 'ワークスペース横断検索'}
-        </h1>
+      <style>{`
+        .search-form-container {
+          display: flex;
+          gap: 10px;
+          width: 100%;
+          max-width: 600px;
+        }
+        .search-input-field {
+          flex: 1;
+          padding: 10px 16px;
+          font-size: 14px;
+          border-radius: 6px;
+          border: 1px solid var(--border-light);
+          background: var(--bg-panel);
+          color: var(--text-primary);
+          outline: none;
+          transition: border-color 0.15s ease-in-out;
+        }
+        .search-input-field:focus {
+          border-color: var(--accent-primary);
+        }
+        .search-submit-button {
+          padding: 10px 24px;
+          font-size: 14px;
+          font-weight: 500;
+          border-radius: 6px;
+          border: none;
+          background: var(--accent-primary);
+          color: #fff;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          white-space: nowrap;
+          transition: opacity 0.15s ease-in-out;
+        }
+        .search-submit-button:hover {
+          opacity: 0.9;
+        }
+        .search-submit-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+        @media (max-width: 768px) {
+          .search-form-container {
+            flex-direction: column;
+            max-width: 100%;
+          }
+          .search-submit-button {
+            width: 100%;
+          }
+        }
+      `}</style>
 
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', maxWidth: '600px' }}>
+      {/* ヘッダーエリア */}
+      <div className="chat-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+          {onMenuClick && (
+            <button
+              className="mobile-menu-trigger"
+              onClick={onMenuClick}
+              style={{
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                background: 'none',
+                border: 'none',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                marginRight: '8px'
+              }}
+            >
+              <Menu size={20} />
+            </button>
+          )}
+          <h1 className="channel-info-title" style={{ margin: 0 }}>
+            {isEn ? 'Workspace Search' : 'ワークスペース横断検索'}
+          </h1>
+          <span className="channel-info-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {isEn ? 'Search messages and documents across the workspace.' : 'ワークスペース全体のメッセージ、ドキュメントを検索します。'}
+          </span>
+        </div>
+      </div>
+
+      {/* ページコンテンツ上部の検索入力エリア（コンテンツ側） */}
+      <div style={{ padding: '24px 32px 0 32px', flexShrink: 0 }}>
+        <form onSubmit={handleSearch} className="search-form-container">
           <input
             type="text"
+            className="search-input-field"
             placeholder={isEn ? 'Search messages, documents...' : 'メッセージ、ドキュメントを検索...'}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '10px 16px',
-              fontSize: '14px',
-              borderRadius: '6px',
-              border: '1px solid var(--border-light)',
-              background: 'var(--bg-panel)',
-              color: 'var(--text-primary)',
-              outline: 'none'
-            }}
             required
           />
           <button
             type="submit"
+            className="search-submit-button"
             disabled={searching}
-            style={{
-              padding: '10px 24px',
-              fontSize: '14px',
-              fontWeight: 500,
-              borderRadius: '6px',
-              border: 'none',
-              background: 'var(--accent-primary)',
-              color: '#fff',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
           >
             {searching ? <Loader className="spin" size={16} /> : (isEn ? 'Search' : '検索')}
           </button>
@@ -117,7 +178,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
       </div>
 
       {/* 結果表示エリア */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '32px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '24px 32px 32px 32px' }}>
         {searching ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
             <Loader className="spin" size={32} color="var(--accent-primary)" />

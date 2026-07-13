@@ -27,6 +27,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser.avatarUrl || null);
   const [profileLang, setProfileLang] = useState<string>(currentUser.language || 'ja');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('cohive_theme') as 'light' | 'dark') || 'dark';
+  });
 
   // パスワード変更ステート
   const [currentPassword, setCurrentPassword] = useState('');
@@ -39,6 +42,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       setDisplayName(currentUser.displayName);
       setAvatarUrl(currentUser.avatarUrl || null);
       setProfileLang(currentUser.language || 'ja');
+      setTheme((localStorage.getItem('cohive_theme') as 'light' | 'dark') || 'dark');
       // モーダルを開いた時にパスワード入力をリセット
       setCurrentPassword('');
       setNewPassword('');
@@ -74,6 +78,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     try {
       await onUpdateProfile(displayName, avatarUrl, profileLang);
       setGlobalLanguage(profileLang as 'ja' | 'en');
+      localStorage.setItem('cohive_theme', theme);
+      document.documentElement.classList.toggle('theme-light', theme === 'light');
       alert(t('profile.updateSuccess'));
       onClose();
     } catch (err: any) {
@@ -163,6 +169,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               >
                 <option value="ja">日本語 (Japanese)</option>
                 <option value="en">English</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>{t('sidebar.theme') === 'Theme' ? 'Theme' : 'テーマ'}</label>
+              <select
+                value={theme}
+                onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+                className="form-input"
+              >
+                <option value="dark">{t('error') === 'Error' ? 'Dark' : 'ダーク'}</option>
+                <option value="light">{t('error') === 'Error' ? 'Light' : 'ライト'}</option>
               </select>
             </div>
             <div className="form-group">

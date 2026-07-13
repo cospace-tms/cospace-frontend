@@ -88,21 +88,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const starredChannels = channels.filter(c => c.isStarred);
 
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    return (localStorage.getItem('cohive_theme') as 'light' | 'dark') || 'dark';
-  });
 
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('cohive_theme', nextTheme);
-    document.documentElement.classList.toggle('theme-light', nextTheme === 'light');
-  };
 
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${(showUserMenu || showWorkspaceMenu) ? 'popover-open' : ''}`}>
       {/* 1. チャンネル・ユーザー情報列 (全体一列) */}
-      <div className="channel-column" style={{ padding: '16px 0 0', minWidth: isCollapsed ? 'auto' : '240px', width: isCollapsed ? 'auto' : '240px' }}>
+      <div className="channel-column" style={{ padding: '16px 0 0', minWidth: isCollapsed ? 'auto' : '240px', width: isCollapsed ? 'auto' : '240px', height: '100%', display: 'flex', flexDirection: 'column' }}>
         
         {/* 最上部：ロゴ ＆ コラプストグル */}
         {!isCollapsed ? (
@@ -346,15 +337,141 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     background: 'var(--bg-sidebar)', 
                     border: '1px solid var(--border-light)', 
                     borderRadius: '8px', 
-                    padding: '6px 0', 
+                    padding: '12px 0', 
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-                    minWidth: '200px'
+                    minWidth: '220px'
                   }}
                 >
-                  <div style={{ padding: '6px 12px 4px', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', borderBottom: '1px solid var(--border-light)', marginBottom: '4px' }}>
-                    {t('error') === 'Error' ? 'Switch Workspace' : 'ワークスペース切り替え'}
+                  {/* A. 上部: ワークスペース名を表示 */}
+                  <div style={{ padding: '0 12px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-light)', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {activeWorkspace?.name || 'Workspace'}
                   </div>
-                  <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+
+                  {/* B. その下: 各機能のアイコンを横並びで配置 */}
+                  {currentUserRole !== 'guest' && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '0 12px 10px', borderBottom: '1px solid var(--border-light)', marginBottom: '8px' }}>
+                      {/* ドキュメント */}
+                      <button
+                        onClick={() => {
+                          setActiveView('workspace_doc');
+                          setActiveChannelId(null);
+                          setShowWorkspaceMenu(false);
+                        }}
+                        style={{
+                          background: activeView === 'workspace_doc' ? 'var(--bg-active)' : 'transparent',
+                          border: 'none',
+                          color: activeView === 'workspace_doc' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '6px',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title={t('sidebar.workspaceDoc')}
+                      >
+                        <BookOpen size={18} />
+                      </button>
+
+                      {/* タスク */}
+                      <button
+                        onClick={() => {
+                          setActiveView('items');
+                          setActiveChannelId(null);
+                          setShowWorkspaceMenu(false);
+                        }}
+                        style={{
+                          background: activeView === 'items' ? 'var(--bg-active)' : 'transparent',
+                          border: 'none',
+                          color: activeView === 'items' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '6px',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title={t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定'}
+                      >
+                        <CheckSquare size={18} />
+                      </button>
+
+                      {/* メディア */}
+                      <button
+                        onClick={() => {
+                          setActiveView('media');
+                          setActiveChannelId(null);
+                          setShowWorkspaceMenu(false);
+                        }}
+                        style={{
+                          background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
+                          border: 'none',
+                          color: activeView === 'media' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '6px',
+                          borderRadius: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                        title={t('sidebar.mediaLibrary')}
+                      >
+                        <Image size={18} />
+                      </button>
+
+                      {/* 設定 / メンバー */}
+                      {onOpenWorkspaceMembers && (
+                        <button
+                          onClick={() => {
+                            setActiveView('workspace_settings');
+                            setActiveChannelId(null);
+                            setShowWorkspaceMenu(false);
+                          }}
+                          style={{
+                            background: activeView === 'workspace_settings' ? 'var(--bg-active)' : 'transparent',
+                            border: 'none',
+                            color: activeView === 'workspace_settings' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: '6px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title={t('sidebar.members')}
+                        >
+                          <Settings size={18} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* C. その下: ワークスペース切り替えと「＋」ボタンインライン配置 */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 12px 4px', fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                    <span>{t('error') === 'Error' ? 'Switch Workspace' : 'ワークスペース切り替え'}</span>
+                    {currentUserRole !== 'guest' && onOpenCreateWorkspace && (
+                      <button
+                        onClick={() => {
+                          onOpenCreateWorkspace();
+                          setShowWorkspaceMenu(false);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: 0
+                        }}
+                        title={t('sidebar.addWorkspace')}
+                      >
+                        <Plus size={12} />
+                      </button>
+                    )}
+                  </div>
+
+                  <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
                     {workspaces.map((ws: any) => {
                       const isActive = ws.id === activeWorkspaceId;
                       return (
@@ -403,34 +520,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       );
                     })}
                   </div>
-                  {currentUserRole !== 'guest' && onOpenCreateWorkspace && (
-                    <button
-                      onClick={() => {
-                        onOpenCreateWorkspace();
-                        setShowWorkspaceMenu(false);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '10px 12px',
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--text-muted)',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        borderTop: '1px solid var(--border-light)',
-                        marginTop: '4px'
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
-                    >
-                      <Plus size={14} />
-                      <span>{t('sidebar.addWorkspace')}</span>
-                    </button>
-                  )}
                 </div>
               )}
             </div>
@@ -549,58 +638,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
             </div>
           ) : (
-            /* 最小化時 (isCollapsed) は縦並び */
-            <div className="sidebar-section" style={{ padding: '0 4px' }}>
-              <div style={{ borderBottom: '1px solid var(--border-light)', margin: '8px 0' }} />
-              <ul className="channel-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <li
-                  className={`channel-item ${activeView === 'workspace_doc' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveView('workspace_doc');
-                    setActiveChannelId(null);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '8px 0' }}
-                  title={t('sidebar.workspaceDoc')}
-                >
-                  <BookOpen size={16} style={{ flexShrink: 0 }} />
-                </li>
-                <li
-                  className={`channel-item ${activeView === 'items' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveView('items');
-                    setActiveChannelId(null);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '8px 0' }}
-                  title={t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定'}
-                >
-                  <CheckSquare size={16} style={{ flexShrink: 0 }} />
-                </li>
-                <li
-                  className={`channel-item ${activeView === 'media' ? 'active' : ''}`}
-                  onClick={() => {
-                    setActiveView('media');
-                    setActiveChannelId(null);
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '8px 0' }}
-                  title={t('sidebar.mediaLibrary')}
-                >
-                  <Image size={16} style={{ flexShrink: 0 }} />
-                </li>
-                {onOpenWorkspaceMembers && (
-                  <li
-                    className={`channel-item ${activeView === 'workspace_settings' ? 'active' : ''}`}
-                    onClick={() => {
-                      setActiveView('workspace_settings');
-                      setActiveChannelId(null);
-                    }}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: '8px 0' }}
-                    title={t('sidebar.members')}
-                  >
-                    <Settings size={16} style={{ flexShrink: 0 }} />
-                  </li>
-                )}
-              </ul>
-            </div>
+            null
           ))}
 
           {/* お気に入り（Starred）セクション */}
@@ -1106,21 +1144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   )}
                 </div>
                 
-                {/* テーマ切り替えトグルのみ表示 */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
-                  <button
-                    className="input-icon-btn"
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleTheme();
-                    }}
-                    style={{ color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    title={t('sidebar.theme')}
-                  >
-                    {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-                  </button>
-                </div>
+                {/* テーマ切り替えトグル削除 */}
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
@@ -1152,19 +1176,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                 </div>
                 
-                {/* テーマ切り替えトグルのみ表示 */}
-                <button
-                  className="input-icon-btn"
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleTheme();
-                  }}
-                  style={{ color: 'var(--text-muted)', marginLeft: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title={t('sidebar.theme')}
-                >
-                  {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
-                </button>
               </div>
             )}
 

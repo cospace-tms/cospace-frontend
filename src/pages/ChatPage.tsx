@@ -959,6 +959,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             workspaceId={activeWorkspaceId}
             customEmojis={customEmojis}
             onJumpToMessage={handleJumpToMessage}
+            onMenuClick={() => setIsCollapsed(false)}
           />
         ) : activeChannelId && activeChannel ? (
           <ChatArea
