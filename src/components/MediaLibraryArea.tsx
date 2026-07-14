@@ -265,6 +265,54 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
 
   const isEn = t('error') === 'Error';
 
+  // 統一されたモバイル用のアップロード/戻るトグルアクションJSX
+  const subheaderLeftContent = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {!showUpload ? (
+        <button
+          className="media-upload-btn-mobile-only"
+          onClick={() => setShowUpload(true)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            background: 'var(--accent-primary)',
+            color: '#fff',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '500',
+          }}
+        >
+          <Upload size={14} style={{ marginRight: '2px' }} />
+          <span>{t('error') === 'Error' ? 'Upload' : 'アップロード'}</span>
+        </button>
+      ) : (
+        <button
+          onClick={() => setShowUpload(false)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            background: 'var(--bg-active, rgba(255, 255, 255, 0.05))',
+            border: '1px solid var(--border-light)',
+            color: 'var(--text-primary)',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '500',
+          }}
+        >
+          <ArrowLeft size={14} style={{ marginRight: '2px' }} />
+          <span>{t('error') === 'Error' ? 'Back' : '戻る'}</span>
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%', minWidth: 0, position: 'relative' }}>
       <input
@@ -291,56 +339,30 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
           </div>
         )}
 
-        {/* チャットモード用フローティングアクション */}
-
-
         {/* サブヘッダー左側のポータル表示（チャットモード時かつノードが存在するとき） */}
         {isChatMode && subheaderLeftPortalNode && createPortal(
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {!showUpload ? (
-              <button
-                className="media-upload-btn-mobile-only"
-                onClick={() => setShowUpload(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: 'var(--accent-primary)',
-                  color: '#fff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                }}
-              >
-                <Upload size={14} />
-                <span>{t('error') === 'Error' ? 'Upload' : 'アップロード'}</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowUpload(false)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: 'var(--bg-active, rgba(255, 255, 255, 0.05))',
-                  border: '1px solid var(--border-light)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                }}
-              >
-                <ArrowLeft size={14} />
-                <span>{t('error') === 'Error' ? 'Back' : '戻る'}</span>
-              </button>
-            )}
-          </div>,
+          subheaderLeftContent,
           subheaderLeftPortalNode
+        )}
+
+        {/* 操作用サブヘッダー - ポータルを使用しないとき（ワークスペース表示など）かつスマホのみインラインで描画 */}
+        {!(isChatMode && subheaderLeftPortalNode) && (
+          <div 
+            className="media-subheader-mobile-only"
+            style={{
+              display: 'none', // CSSでモバイル時のみ display: flex !important になる
+              height: '48px',
+              borderBottom: '1px solid var(--border-light)',
+              background: 'var(--bg-secondary, rgba(24, 28, 37, 0.5))',
+              padding: '0 24px',
+              alignItems: 'center',
+              justifyContent: 'flex-start',
+              flexShrink: 0,
+              zIndex: 10,
+            }}
+          >
+            {subheaderLeftContent}
+          </div>
         )}
 
         {/* メインコンテンツ領域（パディング付きでスクロール可能に） */}
@@ -526,32 +548,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
               </div>
             </div>
 
-            {/* モバイル用アップロードトグルボタン（PC時は CSS で非表示、ポータル不使用時のみ表示） */}
-            {!(isChatMode && subheaderLeftPortalNode) && (
-              <button
-                className="media-upload-toggle-btn"
-                onClick={() => setShowUpload(!showUpload)}
-                style={{
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '10px 16px',
-                  background: 'var(--bg-sidebar)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '8px',
-                  color: 'var(--text-primary)',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  marginBottom: '12px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Upload size={16} />
-                  <span>{t('error') === 'Error' ? 'Upload File' : 'ファイルをアップロード'}</span>
-                </div>
-                {showUpload ? <ChevronRight size={16} style={{ transform: 'rotate(90deg)', transition: 'transform 0.2s' }} /> : <ChevronRight size={16} style={{ transition: 'transform 0.2s' }} />}
-              </button>
-            )}
+
 
             {/* 右側：新規アップロードパネル */}
             <div className={`media-library-upload-panel ${showUpload ? 'show' : ''}`} style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-light)', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>

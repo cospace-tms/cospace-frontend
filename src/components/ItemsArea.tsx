@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ListTodo, Calendar as CalendarIcon, User, ArrowRight, ArrowLeft, CheckCircle2, Lock, ChevronLeft, ChevronRight, Clock, Filter, Grid, List, Tag, AlertTriangle, Menu, Maximize2, Minimize2, X } from 'lucide-react';
+import { Plus, ListTodo, Calendar as CalendarIcon, User, ArrowRight, ArrowLeft, CheckCircle2, Lock, ChevronLeft, ChevronRight, Clock, Filter, Grid, List, Tag, AlertTriangle, Menu, Maximize2, Minimize2, X, Loader } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { CreateItemModal } from './CreateItemModal';
 import { stripMarkdown } from '../utils/markdown';
@@ -633,330 +633,244 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
     : ['日', '月', '火', '水', '木', '金', '土'];
   const todayStr = new Date().toLocaleDateString('ja-JP');
 
+  // 統一されたモバイル/ポータル用のコンパクトビュー切り替え・追加ボタンJSX
+  const compactViewSwitcher = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', height: '100%', flex: 1, justifyContent: 'space-between' }}>
+      {/* ビュー切替ボタン群（タブ風） */}
+      <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.15)', padding: '2px', borderRadius: '6px' }}>
+        {(['kanban', 'list', 'calendar', 'timeline'] as const).map((v) => {
+          const isActive = view === v;
+          const getIcon = () => {
+            switch(v) {
+              case 'kanban': return <Grid size={13} />;
+              case 'list': return <List size={13} />;
+              case 'calendar': return <CalendarIcon size={13} />;
+              case 'timeline': return <Clock size={13} />;
+            }
+          };
+          const getLabel = () => {
+            switch(v) {
+              case 'kanban': return t('error') === 'Error' ? 'Kanban' : 'かんばん';
+              case 'list': return t('error') === 'Error' ? 'List' : 'リスト';
+              case 'calendar': return t('error') === 'Error' ? 'Calendar' : 'カレンダー';
+              case 'timeline': return t('error') === 'Error' ? 'Timeline' : 'タイムライン';
+            }
+          };
+          return (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                fontSize: '11px',
+                fontWeight: isActive ? '600' : '500',
+                color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                background: isActive ? 'var(--bg-panel, rgba(30, 30, 46, 0.85))' : 'transparent',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {getIcon()}
+              <span>{getLabel()}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 新規作成ボタン */}
+      <button
+        onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          background: 'var(--accent-primary)',
+          color: '#fff',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontWeight: '500',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <Plus size={14} />
+        <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+      </button>
+    </div>
+  );
+
+  // 統一されたPC用のタブバー・追加ボタンJSX
+  const pcViewTabs = (
+    <div className="items-view-tabs" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '0 24px', flexShrink: 0 }}>
+      {/* タブボタン群 */}
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        {(['kanban', 'list', 'calendar', 'timeline'] as const).map((v) => {
+          const isActive = view === v;
+          const getIcon = () => {
+            switch(v) {
+              case 'kanban': return <Grid size={14} />;
+              case 'list': return <List size={14} />;
+              case 'calendar': return <CalendarIcon size={14} />;
+              case 'timeline': return <Clock size={14} />;
+            }
+          };
+          const getLabel = () => {
+            switch(v) {
+              case 'kanban': return t('error') === 'Error' ? 'Kanban' : 'かんばん';
+              case 'list': return t('error') === 'Error' ? 'List' : 'リスト';
+              case 'calendar': return t('error') === 'Error' ? 'Calendar' : 'カレンダー';
+              case 'timeline': return t('error') === 'Error' ? 'Timeline' : 'タイムライン';
+            }
+          };
+          return (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '12px 16px',
+                fontSize: '13px',
+                fontWeight: isActive ? '600' : '500',
+                color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
+                border: 'none',
+                background: 'none',
+                borderBottom: isActive ? '2px solid var(--accent-primary)' : '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                marginBottom: '-1px'
+              }}
+            >
+              {getIcon()}
+              <span>{getLabel()}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 右端の追加ボタン */}
+      <button
+        onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 12px',
+          borderRadius: '6px',
+          background: 'var(--accent-primary)',
+          color: '#fff',
+          border: 'none',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontWeight: '500',
+          transition: 'all 0.2s ease',
+        }}
+      >
+        <Plus size={14} />
+        <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+      </button>
+    </div>
+  );
+
   return (
     <div style={{ display: 'flex', flex: 1, overflow: 'hidden', height: '100%', minWidth: 0, position: 'relative' }}>
       <div className="chat-area" style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%' }}>
-        {/* 1. タイトルヘッダー - ポータルを使用しないときのみ、または非チャットモードのときのみ表示 */}
-        {!(isChatMode && subheaderLeftPortalNode) && (
-          <div className={`chat-header ${isChatMode ? 'items-chat-header-mobile' : ''}`}>
+        {/* 1. タイトルヘッダー - ワークスペース表示（チャット外）のときのみ表示 */}
+        {!isChatMode && (
+          <div className="chat-header">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
               {onMenuClick && (
                 <button className="mobile-menu-trigger" onClick={onMenuClick} style={{ color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none', padding: '4px', display: 'flex', alignItems: 'center', marginRight: '8px' }}>
                   <Menu size={20} />
                 </button>
               )}
-              {!isChatMode && (
-                <>
-                  <h1 className="channel-info-title" style={{ margin: 0 }}>{t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定一覧'}</h1>
-                  <span className="channel-info-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t('error') === 'Error' ? 'Centralized management of workspace progress, Kanban, and calendar.' : 'ワークスペース内の進捗、かんばん、予定表を一元管理します。'}
-                  </span>
-                </>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-              {/* ポータルを使用しないときのみ、ヘッダーにモバイルセレクトや追加ボタンを表示 */}
-              {/* モバイル用表示切替セレクトボックス */}
-              <select
-                value={view}
-                onChange={(e) => setView(e.target.value as any)}
-                className="items-view-select-mobile"
-                style={{
-                  background: 'var(--bg-sidebar)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '6px',
-                  color: 'var(--text-primary)',
-                  padding: '6px 10px',
-                  fontSize: '12px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="kanban">{t('error') === 'Error' ? 'Kanban' : 'かんばん'}</option>
-                <option value="list">{t('error') === 'Error' ? 'List' : 'リスト'}</option>
-                <option value="calendar">{t('error') === 'Error' ? 'Calendar' : 'カレンダー'}</option>
-                <option value="timeline">{t('error') === 'Error' ? 'Timeline' : 'タイムライン'}</option>
-              </select>
-
-              {/* 追加ボタン */}
-              <button
-                className={`btn btn-primary ${isChatMode ? 'items-mobile-add-btn' : ''}`}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '8px 16px', borderRadius: '6px', background: 'var(--accent-primary)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}
-                onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-              >
-                <Plus size={16} />
-                <span className="channel-members-count-text">{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
-              </button>
+              <h1 className="channel-info-title" style={{ margin: 0 }}>{t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定一覧'}</h1>
+              <span className="channel-info-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {t('error') === 'Error' ? 'Centralized management of workspace progress, Kanban, and calendar.' : 'ワークスペース内の進捗、かんばん、予定表を一元管理します。'}
+              </span>
             </div>
           </div>
         )}
 
         {/* サブヘッダー左側のポータル表示（チャットモード時かつノードが存在するとき） */}
         {isChatMode && subheaderLeftPortalNode && createPortal(
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', height: '100%' }}>
-            {/* ビュー切替ボタン群（タブ風） */}
-            <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.15)', padding: '2px', borderRadius: '6px' }}>
-              {(['kanban', 'list', 'calendar', 'timeline'] as const).map((v) => {
-                const isActive = view === v;
-                const getIcon = () => {
-                  switch(v) {
-                    case 'kanban': return <Grid size={13} />;
-                    case 'list': return <List size={13} />;
-                    case 'calendar': return <CalendarIcon size={13} />;
-                    case 'timeline': return <Clock size={13} />;
-                  }
-                };
-                const getLabel = () => {
-                  switch(v) {
-                    case 'kanban': return t('error') === 'Error' ? 'Kanban' : 'かんばん';
-                    case 'list': return t('error') === 'Error' ? 'List' : 'リスト';
-                    case 'calendar': return t('error') === 'Error' ? 'Calendar' : 'カレンダー';
-                    case 'timeline': return t('error') === 'Error' ? 'Timeline' : 'タイムライン';
-                  }
-                };
-                return (
-                  <button
-                    key={v}
-                    onClick={() => setView(v)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '4px 10px',
-                      fontSize: '11px',
-                      fontWeight: isActive ? '600' : '500',
-                      color: isActive ? 'var(--accent-primary)' : 'var(--text-muted)',
-                      background: isActive ? 'var(--bg-panel, rgba(30, 30, 46, 0.85))' : 'transparent',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {getIcon()}
-                    <span>{getLabel()}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* 新規作成ボタン */}
-            <button
-              onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '6px',
-                background: 'var(--accent-primary)',
-                color: '#fff',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-              }}
-            >
-              <Plus size={14} />
-              <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
-            </button>
-          </div>,
+          compactViewSwitcher,
           subheaderLeftPortalNode
         )}
 
-        {/* 2. 表示切替タブバー - ポータルを使用しないときのみ表示 */}
+        {/* 2. 表示切替タブバー - ポータルを使用しないときのみインラインで描画 */}
         {!(isChatMode && subheaderLeftPortalNode) && (
-          <div className="items-view-tabs" style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '0 24px', flexShrink: 0 }}>
-            <button
-              onClick={() => setView('kanban')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                fontSize: '13px',
-                fontWeight: view === 'kanban' ? '600' : '500',
-                color: view === 'kanban' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                border: 'none',
-                background: 'none',
-                borderBottom: view === 'kanban' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                marginBottom: '-1px'
-              }}
-            >
-              <Grid size={14} />
-              <span>{t('error') === 'Error' ? 'Kanban' : 'かんばん'}</span>
-            </button>
-            <button
-              onClick={() => setView('list')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                fontSize: '13px',
-                fontWeight: view === 'list' ? '600' : '500',
-                color: view === 'list' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                border: 'none',
-                background: 'none',
-                borderBottom: view === 'list' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                marginBottom: '-1px'
-              }}
-            >
-              <List size={14} />
-              <span>{t('error') === 'Error' ? 'List' : 'リスト'}</span>
-            </button>
-            <button
-              onClick={() => setView('calendar')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                fontSize: '13px',
-                fontWeight: view === 'calendar' ? '600' : '500',
-                color: view === 'calendar' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                border: 'none',
-                background: 'none',
-                borderBottom: view === 'calendar' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                marginBottom: '-1px'
-              }}
-            >
-              <CalendarIcon size={14} />
-              <span>{t('error') === 'Error' ? 'Calendar' : 'カレンダー'}</span>
-            </button>
-            <button
-              onClick={() => setView('timeline')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '12px 16px',
-                fontSize: '13px',
-                fontWeight: view === 'timeline' ? '600' : '500',
-                color: view === 'timeline' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                border: 'none',
-                background: 'none',
-                borderBottom: view === 'timeline' ? '2px solid var(--accent-primary)' : '2px solid transparent',
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                marginBottom: '-1px'
-              }}
-            >
-              <Clock size={14} />
-              <span>{t('error') === 'Error' ? 'Timeline' : 'タイムライン'}</span>
-            </button>
+          <>
+            {/* PC表示用のタブバー（CSSでモバイル時は非表示） */}
+            {pcViewTabs}
 
-            {/* 新規作成ボタン (チャットモード時のみ表示切替の欄に追加) */}
-            {isChatMode && (
-              <button
-                onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-                title={t('error') === 'Error' ? 'New Task' : '新規作成'}
-                style={{
-                  marginLeft: 'auto',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  background: 'var(--accent-primary)',
-                  color: '#fff',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  height: '32px',
-                }}
-              >
-                <Plus size={14} />
-                <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
-              </button>
-          )}
-        </div>
-      )}
+            {/* モバイル表示用のコンパクト切り替えバー（CSSでPC時は非表示） */}
+            <div className="items-view-tabs-mobile-only" style={{ display: 'none', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '8px 24px', flexShrink: 0 }}>
+              {compactViewSwitcher}
+            </div>
+          </>
+        )}
 
-      {/* 2-2. フィルターバー */}
-      <div className="items-filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 24px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-light)', flexShrink: 0, flexWrap: 'wrap' }}>
-        <div className="items-filter-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
-          <Filter size={13} />
-          <span>{t('error') === 'Error' ? 'Filter:' : 'フィルター:'}</span>
-        </div>
+        {/* 2-2. フィルターバー */}
+        <div className="items-filter-bar" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 24px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-light)', flexShrink: 0, flexWrap: 'wrap' }}>
+          <div className="items-filter-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
+            <Filter size={13} />
+            <span>{t('error') === 'Error' ? 'Filter:' : 'フィルター:'}</span>
+          </div>
 
-        {/* アサイン・作成者フィルター */}
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value as any)}
-          style={{
-            background: 'var(--bg-sidebar)',
-            border: '1px solid var(--border-light)',
-            borderRadius: '6px',
-            color: 'var(--text-primary)',
-            padding: '5px 10px',
-            fontSize: '12px',
-            outline: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Tasks' : '全員のタスク'}</option>
-          <option value="mine" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'My Tasks' : '自分担当'}</option>
-          <option value="created" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Created by me' : '自分が作成'}</option>
-        </select>
-
-        {/* 優先度フィルター */}
-        <select
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value)}
-          style={{
-            background: 'var(--bg-sidebar)',
-            border: '1px solid var(--border-light)',
-            borderRadius: '6px',
-            color: 'var(--text-primary)',
-            padding: '5px 10px',
-            fontSize: '12px',
-            outline: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Priorities' : 'すべての優先度'}</option>
-          <option value="high" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Priority: High' : '優先度: 高'}</option>
-          <option value="medium" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Priority: Med' : '優先度: 中'}</option>
-          <option value="low" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Priority: Low' : '優先度: 低'}</option>
-          <option value="none" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'No Priority' : '優先度なし'}</option>
-        </select>
-
-        {/* タグフィルター */}
-        <select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          style={{
-            background: 'var(--bg-sidebar)',
-            border: '1px solid var(--border-light)',
-            borderRadius: '6px',
-            color: 'var(--text-primary)',
-            padding: '5px 10px',
-            fontSize: '12px',
-            outline: 'none',
-            cursor: 'pointer',
-            maxWidth: '150px'
-          }}
-        >
-          <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Tags' : 'すべてのタグ'}</option>
-          {allUniqueTags.map(tag => (
-            <option key={tag} value={tag} style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>#{tag}</option>
-          ))}
-        </select>
-
-        {/* チャンネルフィルター - チャットモード以外で表示 */}
-        {!isChatMode && (
+          {/* アサイン・作成者フィルター */}
           <select
-            value={channelFilter}
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as any)}
+            style={{
+              background: 'var(--bg-sidebar)',
+              border: '1px solid var(--border-light)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              padding: '5px 10px',
+              fontSize: '12px',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Tasks' : '全員のタスク'}</option>
+            <option value="mine" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'My Tasks' : '自分担当'}</option>
+            <option value="created" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Created by me' : '自分が作成'}</option>
+          </select>
+
+          {/* 優先度フィルター */}
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            style={{
+              background: 'var(--bg-sidebar)',
+              border: '1px solid var(--border-light)',
+              borderRadius: '6px',
+              color: 'var(--text-primary)',
+              padding: '5px 10px',
+              fontSize: '12px',
+              outline: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Priorities' : 'すべての優先度'}</option>
+            <option value="high" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Priority: High' : '優先度: 高'}</option>
+            <option value="medium" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Priority: Med' : '優先度: 中'}</option>
+            <option value="low" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'Priority: Low' : '優先度: 低'}</option>
+            <option value="none" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'No Priority' : '優先度なし'}</option>
+          </select>
+
+          {/* タグフィルター */}
+          <select
+            value={tagFilter}
             onChange={(e) => setTagFilter(e.target.value)}
             style={{
               background: 'var(--bg-sidebar)',
@@ -967,27 +881,53 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
               fontSize: '12px',
               outline: 'none',
               cursor: 'pointer',
-              maxWidth: '180px'
+              maxWidth: '150px'
             }}
           >
-            <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Channels' : 'すべてのチャンネル'}</option>
-            {channels.map(c => {
-              let prefix = c.isPrivate ? '🔒 ' : '# ';
-              if (c.type === 'dm') prefix = '💬 ';
-              return (
-                <option key={c.id} value={c.id} style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>
-                  {prefix}{c.name}
-                </option>
-              );
-            })}
+            <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Tags' : 'すべてのタグ'}</option>
+            {allUniqueTags.map(tag => (
+              <option key={tag} value={tag} style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>#{tag}</option>
+            ))}
           </select>
-        )}
-      </div>
+
+          {/* チャンネルフィルター - チャットモード以外で表示 */}
+          {!isChatMode && (
+            <select
+              value={channelFilter}
+              onChange={(e) => setTagFilter(e.target.value)}
+              style={{
+                background: 'var(--bg-sidebar)',
+                border: '1px solid var(--border-light)',
+                borderRadius: '6px',
+                color: 'var(--text-primary)',
+                padding: '5px 10px',
+                fontSize: '12px',
+                outline: 'none',
+                cursor: 'pointer',
+                maxWidth: '180px'
+              }}
+            >
+              <option value="all" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>{t('error') === 'Error' ? 'All Channels' : 'すべてのチャンネル'}</option>
+              {channels.map(c => {
+                let prefix = c.isPrivate ? '🔒 ' : '# ';
+                if (c.type === 'dm') prefix = '💬 ';
+                return (
+                  <option key={c.id} value={c.id} style={{ background: 'var(--bg-sidebar)', color: 'var(--text-primary)' }}>
+                    {prefix}{c.name}
+                  </option>
+                );
+              })}
+            </select>
+          )}
+        </div>
+
+
 
       {/* 同期ステータス */}
       {loading && (
-        <div style={{ padding: '8px 24px', background: 'rgba(100,108,255,0.05)', color: 'var(--primary-color)', fontSize: '12px', textAlign: 'center' }}>
-          {t('loading')}
+        <div className="floating-loading-indicator">
+          <Loader size={14} className="spin-icon" />
+          <span>{t('loading')}</span>
         </div>
       )}
 

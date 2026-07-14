@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, CheckSquare, Clock, File, Inbox, MessageSquare, PlusCircle, Menu, Globe } from 'lucide-react';
+import { Calendar, CheckSquare, Clock, File, Inbox, MessageSquare, PlusCircle, Menu, Globe, Loader } from 'lucide-react';
 import { useLanguage } from '../utils/i18n';
 
 export interface DashboardTask {
@@ -153,21 +153,9 @@ export const DashboardArea: React.FC<DashboardAreaProps> = ({
       </div>
 
       {loading && (
-        <div style={{
-          position: 'absolute',
-          top: '64px',
-          left: 0,
-          right: 0,
-          padding: '8px 24px',
-          background: 'rgba(100,108,255,0.08)',
-          backdropFilter: 'blur(4px)',
-          color: 'var(--primary-color)',
-          fontSize: '12px',
-          textAlign: 'center',
-          borderBottom: '1px solid rgba(100,108,255,0.2)',
-          zIndex: 10
-        }}>
-          {t('loading')}
+        <div className="floating-loading-indicator">
+          <Loader size={14} className="spin-icon" />
+          <span>{t('loading')}</span>
         </div>
       )}
 

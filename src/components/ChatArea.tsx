@@ -944,9 +944,6 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   if (nextShowPins) {
                     setShowMembersPopover(false);
                   }
-                  setShowDoc(false);
-                  setShowTasks(false);
-                  setShowMedia(false);
                 }}
                 title={isEn ? 'Pinned Messages' : 'ピン留めされたメッセージ'}
               >

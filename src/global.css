@@ -523,6 +523,19 @@ body {
   100% { transform: scale(0.9); opacity: 0.6; }
 }
 
+/* Light theme overrides for polling badge */
+.theme-light .polling-badge {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(15, 23, 42, 0.08);
+  color: var(--text-muted);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+.theme-light .polling-badge.active {
+  border-color: rgba(16, 185, 129, 0.35);
+  color: var(--accent-success);
+}
+
 /* Message History Scroll Area */
 .messages-viewport {
   flex: 1;
@@ -2261,5 +2274,89 @@ body {
     display: none !important;
   }
 }
+
+/* PC表示時はスマホ専用操作バー・切り替えタブを非表示 */
+.items-view-tabs-mobile-only,
+.media-subheader-mobile-only,
+.settings-tabs-mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  /* タスク管理のインライン表示時：通常のタブバーを隠してコンパクト切り替えボタン群を表示 */
+  .items-view-tabs {
+    display: none !important;
+  }
+  .items-view-tabs-mobile-only {
+    display: flex !important;
+  }
+  
+  /* ワークスペース設定：通常のタブバーを隠してコンパクト切り替えボタン群を表示 */
+  .settings-tabs {
+    display: none !important;
+  }
+  .settings-tabs-mobile-only {
+    display: flex !important;
+  }
+}
+
+@media (max-width: 767px) {
+  /* スマホ表示時はメディア用共通操作バーを表示 */
+  .media-subheader-mobile-only {
+    display: flex !important;
+  }
+}
+
+/* 500px 以下の極小モバイル表示のとき、タスクの表示切替および新規作成のテキストを消しアイコンのみにする */
+@media (max-width: 500px) {
+  /* タスクビュー切替と新規作成ボタン */
+  .items-view-tabs-mobile-only button span,
+  .chat-subheader button span {
+    display: none !important;
+  }
+  .items-view-tabs-mobile-only button,
+  .chat-subheader button {
+    padding: 6px 8px !important;
+    min-width: 32px;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   🔄 Floating Loading Indicator
+   ========================================================================== */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+  color: var(--accent-primary, #4f46e5);
+}
+
+.floating-loading-indicator {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--bg-panel, rgba(30, 30, 46, 0.85));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
 
 

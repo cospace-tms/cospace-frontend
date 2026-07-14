@@ -652,29 +652,6 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
               <span className="channel-info-desc" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {t('error') === 'Error' ? 'Centralized management of members, groups, and settings' : 'メンバー・グループ・設定の一元管理'}
               </span>
-
-              {/* モバイル用タブ切替セレクトボックス（PC時は CSS で非表示） */}
-              <select
-                value={activeTab}
-                onChange={(e) => setActiveTab(e.target.value as any)}
-                className="settings-view-select-mobile"
-                style={{
-                  marginLeft: '12px',
-                  background: 'var(--bg-sidebar)',
-                  border: '1px solid var(--border-light)',
-                  borderRadius: '6px',
-                  color: 'var(--text-primary)',
-                  padding: '6px 10px',
-                  fontSize: '12px',
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="members">{t('workspace.members')}</option>
-                {canAccessSettings && <option value="groups">{t('workspace.groups')}</option>}
-                {isOwner && <option value="statuses">{t('workspace.statuses')}</option>}
-                {isOwner && <option value="smtp">{t('workspace.smtp')}</option>}
-              </select>
             </div>
           </div>
 
@@ -712,6 +689,100 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                 onClick={() => setActiveTab('smtp')}
               >
                 <Mail size={16} />
+                <span>{t('workspace.smtp')}</span>
+              </button>
+            )}
+          </div>
+
+          {/* モバイル用コンパクトタブ切り替えバー (CSSでPC時は非表示) */}
+          <div className="settings-tabs-mobile-only" style={{ display: 'none', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-secondary)', padding: '8px 24px', gap: '8px', flexShrink: 0, overflowX: 'auto', alignItems: 'center' }}>
+            <button 
+              className={`tab-btn-compact ${activeTab === 'members' ? 'active' : ''}`} 
+              onClick={() => setActiveTab('members')}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: activeTab === 'members' ? '600' : '500',
+                color: activeTab === 'members' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                background: activeTab === 'members' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              <Shield size={14} />
+              <span>{t('workspace.members')}</span>
+            </button>
+            {canAccessSettings && (
+              <button 
+                className={`tab-btn-compact ${activeTab === 'groups' ? 'active' : ''}`} 
+                onClick={() => setActiveTab('groups')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: activeTab === 'groups' ? '600' : '500',
+                  color: activeTab === 'groups' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                  background: activeTab === 'groups' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <Users size={14} />
+                <span>{t('workspace.groups')}</span>
+              </button>
+            )}
+            {isOwner && (
+              <button 
+                className={`tab-btn-compact ${activeTab === 'statuses' ? 'active' : ''}`} 
+                onClick={() => setActiveTab('statuses')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: activeTab === 'statuses' ? '600' : '500',
+                  color: activeTab === 'statuses' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                  background: activeTab === 'statuses' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <Sliders size={14} />
+                <span>{t('workspace.statuses')}</span>
+              </button>
+            )}
+            {isOwner && (
+              <button 
+                className={`tab-btn-compact ${activeTab === 'smtp' ? 'active' : ''}`} 
+                onClick={() => setActiveTab('smtp')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  fontWeight: activeTab === 'smtp' ? '600' : '500',
+                  color: activeTab === 'smtp' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                  background: activeTab === 'smtp' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+              >
+                <Mail size={14} />
                 <span>{t('workspace.smtp')}</span>
               </button>
             )}

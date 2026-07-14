@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Hash, Plus, Settings, Inbox, User, LogOut, MoreHorizontal, Lock, MessageCircle, Globe, CheckSquare, ToggleLeft, ChevronRight, ChevronLeft, BookOpen, Image, Sun, Moon, Home, Menu, Star, Search } from 'lucide-react';
 import { useLanguage } from '../utils/i18n';
 
@@ -82,6 +82,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [isDmsExpanded, setIsDmsExpanded] = useState(true);
+
+  // ポップオーバー外クリック（Click Outside）検知用のRef
+  const workspaceMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // ワークスペースメニューの外側をクリックした場合は閉じる
+      if (showWorkspaceMenu && workspaceMenuRef.current && !workspaceMenuRef.current.contains(event.target as Node)) {
+        setShowWorkspaceMenu(false);
+      }
+      // ユーザーメニューの外側をクリックした場合は閉じる
+      if (showUserMenu && userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showWorkspaceMenu, showUserMenu]);
 
   const isOwner = currentUserRole === 'owner';
   const isGroupAdmin = currentUserRole === 'group_admin';
@@ -276,7 +298,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
+            <div ref={workspaceMenuRef} style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -696,14 +718,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             width: '24px',
                             height: '24px',
                             borderRadius: '50%',
-                            background: isActive ? 'var(--primary-color)' : 'var(--bg-panel)',
+                            background: isActive ? 'var(--accent-primary)' : 'var(--bg-panel)',
                             color: isActive ? '#fff' : 'var(--accent-warning, #f59e0b)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '11px',
                             fontWeight: 'bold',
-                            border: '1px solid var(--accent-warning, #f59e0b)'
+                            border: isActive ? '1px solid var(--accent-primary)' : '1px solid var(--accent-warning, #f59e0b)'
                           }}
                         >
                           {dmDisplayName.substring(0, 1).toUpperCase()}
@@ -858,14 +880,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           width: '24px',
                           height: '24px',
                           borderRadius: '50%',
-                          background: isActive ? 'var(--primary-color)' : 'var(--bg-panel)',
+                          background: isActive ? 'var(--accent-primary)' : 'var(--bg-panel)',
                           color: isActive ? '#fff' : 'var(--text-muted)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           fontSize: '11px',
                           fontWeight: 'bold',
-                          border: '1px solid var(--border-light)'
+                          border: isActive ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)'
                         }}
                       >
                         {channel.name.substring(0, 1).toUpperCase()}
@@ -1037,14 +1059,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             width: '24px',
                             height: '24px',
                             borderRadius: '50%',
-                            background: isActive ? 'var(--primary-color)' : 'var(--bg-panel)',
+                            background: isActive ? 'var(--accent-primary)' : 'var(--bg-panel)',
                             color: isActive ? '#fff' : 'var(--text-muted)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '11px',
                             fontWeight: 'bold',
-                            border: '1px solid var(--border-light)'
+                            border: isActive ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)'
                           }}
                         >
                           {dmDisplayName.substring(0, 1).toUpperCase()}
@@ -1122,7 +1144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* ユーザー情報フッター */}
         {currentUser && (
-          <div className="sidebar-footer" style={{ position: 'relative', zIndex: showUserMenu ? 200 : 1, padding: isCollapsed ? '12px 0' : '12px 16px', borderTop: '1px solid var(--border-light)' }}>
+          <div ref={userMenuRef} className="sidebar-footer" style={{ position: 'relative', zIndex: showUserMenu ? 200 : 1, padding: isCollapsed ? '12px 0' : '12px 16px', borderTop: '1px solid var(--border-light)' }}>
             {isCollapsed ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
                 <div 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Inbox, CheckCircle2, MessageSquare, UserPlus, Check, Clock, Eye, Archive, RotateCcw, Menu } from 'lucide-react';
+import { Inbox, CheckCircle2, MessageSquare, UserPlus, Check, Clock, Eye, Archive, RotateCcw, Menu, Loader } from 'lucide-react';
 import { useLanguage } from '../utils/i18n';
 
 export interface Notification {
@@ -201,8 +201,9 @@ export const InboxArea: React.FC<InboxAreaProps> = ({
       </div>
 
       {loading && (
-        <div style={{ padding: '8px 24px', background: 'rgba(100,108,255,0.05)', color: 'var(--primary-color)', fontSize: '12px', textAlign: 'center' }}>
-          {t('loading')}
+        <div className="floating-loading-indicator">
+          <Loader size={14} className="spin-icon" />
+          <span>{t('loading')}</span>
         </div>
       )}
 
