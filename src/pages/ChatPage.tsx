@@ -31,7 +31,7 @@ interface ChatPageProps {
   initialWorkspaceId: string;
   initialChannelId: string;
   onLogout: () => void;
-  onUpdateUser: (displayName: string, avatarUrl: string | null, language: string) => void;
+  onUpdateUser: (displayName: string, avatarUrl: string | null, language: string, email?: string) => void;
 }
 
 interface Channel {
@@ -1015,6 +1015,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         onClose={() => setIsProfileOpen(false)}
         currentUser={currentUser}
         onUpdateProfile={handleUpdateProfile}
+        onUpdateEmail={(newEmail) => onUpdateUser(currentUser.displayName, currentUser.avatarUrl || null, currentUser.language || 'ja', newEmail)}
       />
 
       {/* チャンネル設定モーダル */}

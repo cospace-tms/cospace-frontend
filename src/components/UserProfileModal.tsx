@@ -14,6 +14,7 @@ interface UserProfileModalProps {
     language?: string;
   };
   onUpdateProfile: (displayName: string, avatarUrl: string | null, language: string) => Promise<void>;
+  onUpdateEmail?: (email: string) => void;
 }
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
@@ -21,6 +22,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   onClose,
   currentUser,
   onUpdateProfile,
+  onUpdateEmail,
 }) => {
   const { setLanguage: setGlobalLanguage, t } = useLanguage();
   const [displayName, setDisplayName] = useState(currentUser.displayName);
@@ -37,6 +39,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordMessage, setPasswordMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
+  // メールアドレス変更ステート
+  const [showEmailChange, setShowEmailChange] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [isSmtpConfigured, setIsSmtpConfigured] = useState(false);
+  const [emailChangeStep, setEmailChangeStep] = useState<'request' | 'verify'>('request');
+  const [emailChangeMessage, setEmailChangeMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [emailChangeLoading, setEmailChangeLoading] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
       setDisplayName(currentUser.displayName);
@@ -48,6 +60,31 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       setNewPassword('');
       setConfirmPassword('');
       setPasswordMessage(null);
+
+      // メール変更用の状態を初期化
+      setShowEmailChange(false);
+      setNewEmail('');
+      setEmailPassword('');
+      setVerificationCode('');
+      setEmailChangeStep('request');
+      setEmailChangeMessage(null);
+      setEmailChangeLoading(false);
+
+      // SMTP設定の有無や保留中の要求を確認
+      apiClient.get<{ success: boolean; isSmtpConfigured: boolean; pendingChange: { newEmail: string; expiresAt: string } | null }>('/api/users/email-change-status')
+        .then(res => {
+          if (res.success) {
+            setIsSmtpConfigured(res.isSmtpConfigured);
+            if (res.pendingChange) {
+              setNewEmail(res.pendingChange.newEmail);
+              setEmailChangeStep('verify');
+              setShowEmailChange(true);
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Failed to get email change status:', err);
+        });
     }
   }, [isOpen, currentUser]);
 
@@ -85,6 +122,90 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     } catch (err: any) {
       alert(`${t('profile.updateFailed')}: ${err.message || err}`);
     }
+  };
+
+  // メールアドレス変更リクエスト送信処理
+  const handleRequestEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailChangeMessage(null);
+    setEmailChangeLoading(true);
+
+    try {
+      const res = await apiClient.post<{ success: boolean; emailUpdated: boolean; newEmail: string; error?: string }>(
+        '/api/users/email-change-request',
+        { newEmail, currentPassword: emailPassword }
+      );
+
+      if (res.success) {
+        if (res.emailUpdated) {
+          // SMTP未設定で即時変更された場合
+          setEmailChangeMessage({ text: t('profile.emailChangeSuccessDirect'), type: 'success' });
+          if (onUpdateEmail) {
+            onUpdateEmail(res.newEmail);
+          }
+          setEmailPassword('');
+          // 少し待ってからフォームを閉じる
+          setTimeout(() => {
+            setShowEmailChange(false);
+            setEmailChangeMessage(null);
+          }, 2000);
+        } else {
+          // SMTP設定済みで確認コードが送信された場合
+          setEmailChangeStep('verify');
+          setEmailChangeMessage({ text: t('profile.emailChangeSent'), type: 'success' });
+        }
+      } else {
+        setEmailChangeMessage({ text: res.error || t('profile.updateFailed'), type: 'error' });
+      }
+    } catch (err: any) {
+      setEmailChangeMessage({ text: err.message || t('profile.updateFailed'), type: 'error' });
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  // 確認コード確定処理
+  const handleConfirmEmailChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailChangeMessage(null);
+    setEmailChangeLoading(true);
+
+    try {
+      const res = await apiClient.post<{ success: boolean; newEmail: string; error?: string }>(
+        '/api/users/email-change-confirm',
+        { code: verificationCode }
+      );
+
+      if (res.success) {
+        setEmailChangeMessage({ text: t('profile.emailChangeSuccessDirect'), type: 'success' });
+        if (onUpdateEmail) {
+          onUpdateEmail(res.newEmail);
+        }
+        setVerificationCode('');
+        setEmailPassword('');
+        setTimeout(() => {
+          setShowEmailChange(false);
+          setEmailChangeStep('request');
+          setEmailChangeMessage(null);
+        }, 2000);
+      } else {
+        setEmailChangeMessage({ text: res.error || t('profile.updateFailed'), type: 'error' });
+      }
+    } catch (err: any) {
+      setEmailChangeMessage({ text: err.message || t('profile.updateFailed'), type: 'error' });
+    } finally {
+      setEmailChangeLoading(false);
+    }
+  };
+
+  // メールアドレス変更キャンセル処理
+  const handleCancelEmailChange = () => {
+    setShowEmailChange(false);
+    setEmailChangeStep('request');
+    setNewEmail('');
+    setEmailPassword('');
+    setVerificationCode('');
+    setEmailChangeMessage(null);
   };
 
   // パスワード変更送信処理
@@ -147,9 +268,129 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <form onSubmit={handleSave} className="settings-form">
             <div className="form-group">
               <label>{t('profile.email')}</label>
-              <input type="text" value={currentUser.email} disabled className="form-input disabled" />
-              <span className="form-help">{t('profile.emailHelp')}</span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <input type="text" value={currentUser.email} disabled className="form-input disabled" style={{ flex: 1 }} />
+                {!showEmailChange && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ whiteSpace: 'nowrap', padding: '0 15px', fontSize: '14px' }}
+                    onClick={() => setShowEmailChange(true)}
+                  >
+                    {t('profile.changeEmail')}
+                  </button>
+                )}
+              </div>
             </div>
+
+            {showEmailChange && (
+              <div className="email-change-section" style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '8px',
+                padding: '15px',
+                marginBottom: '15px',
+                animation: 'fadeIn 0.3s ease'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <h4 style={{ margin: 0, fontSize: '15px', color: 'var(--text-light, #f1f1f1)' }}>{t('profile.changeEmail')}</h4>
+                  <button type="button" className="close-btn" onClick={handleCancelEmailChange} style={{ padding: '2px' }}>
+                    <X size={16} />
+                  </button>
+                </div>
+                
+                {emailChangeMessage && (
+                  <div className={`password-message ${emailChangeMessage.type}`} style={{ marginBottom: '10px', padding: '8px 12px', fontSize: '13px' }}>
+                    {emailChangeMessage.text}
+                  </div>
+                )}
+
+                {emailChangeStep === 'request' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <label style={{ fontSize: '12px', opacity: 0.8 }}>{t('profile.newEmail')}</label>
+                      <input 
+                        type="email" 
+                        value={newEmail} 
+                        onChange={(e) => setNewEmail(e.target.value)} 
+                        required 
+                        className="form-input" 
+                        placeholder="new-email@example.com"
+                      />
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <label style={{ fontSize: '12px', opacity: 0.8 }}>{t('profile.currentPw')}</label>
+                      <input 
+                        type="password" 
+                        value={emailPassword} 
+                        onChange={(e) => setEmailPassword(e.target.value)} 
+                        required 
+                        className="form-input" 
+                        placeholder="••••••••"
+                      />
+                    </div>
+                    <p style={{ fontSize: '11px', opacity: 0.6, margin: '2px 0 5px' }}>
+                      {t('profile.changeEmailHelp')}
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        onClick={handleCancelEmailChange}
+                        disabled={emailChangeLoading}
+                      >
+                        {t('profile.cancelChange')}
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn btn-primary" 
+                        onClick={handleRequestEmailChange}
+                        disabled={emailChangeLoading || !newEmail || !emailPassword}
+                      >
+                        {emailChangeLoading ? <Loader className="animate-spin" size={14} /> : t('profile.requestChange')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      <label style={{ fontSize: '12px', opacity: 0.8 }}>{t('profile.verificationCode')}</label>
+                      <input 
+                        type="text" 
+                        value={verificationCode} 
+                        onChange={(e) => setVerificationCode(e.target.value)} 
+                        required 
+                        className="form-input" 
+                        placeholder="123456"
+                        maxLength={6}
+                        style={{ textAlign: 'center', letterSpacing: '8px', fontSize: '18px', fontWeight: 'bold' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                      <button 
+                        type="button" 
+                        className="btn btn-secondary" 
+                        onClick={() => {
+                          setEmailChangeStep('request');
+                          setEmailChangeMessage(null);
+                        }}
+                        disabled={emailChangeLoading}
+                      >
+                        {t('profile.cancelChange')}
+                      </button>
+                      <button 
+                        type="button" 
+                        className="btn btn-primary" 
+                        onClick={handleConfirmEmailChange}
+                        disabled={emailChangeLoading || verificationCode.length !== 6}
+                      >
+                        {emailChangeLoading ? <Loader className="animate-spin" size={14} /> : t('profile.confirmChange')}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="form-group">
               <label>{t('profile.displayName')}</label>
               <input 

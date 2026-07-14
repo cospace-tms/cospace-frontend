@@ -241,9 +241,9 @@ function AppContent() {
     }
   };
 
-  const handleUpdateSession = (displayName: string, avatarUrl: string | null, language?: string) => {
+  const handleUpdateSession = (displayName: string, avatarUrl: string | null, language?: string, email?: string) => {
     if (!session) return;
-    const newSession = { ...session, displayName, avatarUrl, language };
+    const newSession = { ...session, displayName, avatarUrl, language, email: email || session.email };
     localStorage.setItem('cohive_session', JSON.stringify(newSession));
     setSession(newSession);
     if (language === 'ja' || language === 'en') {

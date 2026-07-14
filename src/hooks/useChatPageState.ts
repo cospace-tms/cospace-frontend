@@ -49,7 +49,7 @@ interface UseChatPageStateProps {
   initialWorkspaceId: string;
   initialChannelId: string;
   onLogout: () => void;
-  onUpdateUser: (displayName: string, avatarUrl: string | null, language: string) => void;
+  onUpdateUser: (displayName: string, avatarUrl: string | null, language: string, email?: string) => void;
 }
 
 export const useChatPageState = ({
