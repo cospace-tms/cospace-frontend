@@ -62,6 +62,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
     newStatuses[targetIndex] = temp;
 
     setCustomStatuses(newStatuses);
+    triggerStatusUpdate(newStatuses);
   };
 
   // カスタムステータス名の編集保存
@@ -81,6 +82,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
     newStatuses[index] = trimmed;
     setCustomStatuses(newStatuses);
     setEditingStatusIndex(null);
+    triggerStatusUpdate(newStatuses);
   };
 
   // 一時パスワード発行ステート
@@ -166,15 +168,10 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
     }
   };
 
-  const handleSaveStatuses = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customStatuses.length === 0) {
-      alert(t('error') === 'Error' ? 'At least one status is required.' : '少なくとも1つのステータスが必要です。');
-      return;
-    }
+  // 共通ステータス自動更新
+  const triggerStatusUpdate = async (newStatuses: string[]) => {
     try {
-      await onUpdateWorkspace(workspaceName, customStatuses.join(','));
-      alert(t('error') === 'Error' ? 'Status settings updated.' : 'ステータス設定を更新しました。');
+      await onUpdateWorkspace(workspaceName, newStatuses.join(','));
     } catch (err: any) {
       alert((t('error') === 'Error' ? 'Failed to update statuses: ' : 'ステータスの更新に失敗しました: ') + (err.message || err));
     }
@@ -187,8 +184,10 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
       alert(t('error') === 'Error' ? 'A status with the same name already exists.' : '同じ名前のステータスが既に存在します。');
       return;
     }
-    setCustomStatuses([...customStatuses, trimmed]);
+    const nextStatuses = [...customStatuses, trimmed];
+    setCustomStatuses(nextStatuses);
     setNewStatusName('');
+    triggerStatusUpdate(nextStatuses);
   };
 
   const handleRemoveStatus = (statusToRemove: string) => {
@@ -200,7 +199,9 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
       ? `Delete status "${statusToRemove}"?\n(Existing tasks with this status will remain unchanged)`
       : `ステータス「${statusToRemove}」を削除しますか？\n（このステータスが設定された既存タスクはそのまま残ります）`;
     if (confirm(confirmMsg)) {
-      setCustomStatuses(customStatuses.filter(s => s !== statusToRemove));
+      const nextStatuses = customStatuses.filter(s => s !== statusToRemove);
+      setCustomStatuses(nextStatuses);
+      triggerStatusUpdate(nextStatuses);
     }
   };
 
@@ -612,12 +613,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
             })}
           </div>
 
-          {/* 保存ボタン */}
-          <form onSubmit={handleSaveStatuses} style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="submit-btn" style={{ padding: '11px 24px' }}>
-              {t('workspace.statusSaveBtn')}
-            </button>
-          </form>
+
         </div>
       </div>
     );
