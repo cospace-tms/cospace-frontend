@@ -102,6 +102,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       const response = await apiClient.post<{ success: boolean; fileUrl: string }>('/api/files/upload', formData);
       if (response.success && response.fileUrl) {
         setAvatarUrl(response.fileUrl);
+        await triggerProfileUpdate(displayName, response.fileUrl, profileLang);
       }
     } catch (err: any) {
       alert(`${t('profile.updateFailed')} (Avatar): ${err.message || err}`);
@@ -110,15 +111,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // 共通プロフィール自動更新
+  const triggerProfileUpdate = async (name: string, avatar: string | null, lang: string) => {
     try {
-      await onUpdateProfile(displayName, avatarUrl, profileLang);
-      setGlobalLanguage(profileLang as 'ja' | 'en');
-      localStorage.setItem('cohive_theme', theme);
-      document.documentElement.classList.toggle('theme-light', theme === 'light');
-      alert(t('profile.updateSuccess'));
-      onClose();
+      await onUpdateProfile(name, avatar, lang);
+      setGlobalLanguage(lang as 'ja' | 'en');
     } catch (err: any) {
       alert(`${t('profile.updateFailed')}: ${err.message || err}`);
     }
@@ -265,22 +262,29 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         </div>
 
         <div className="settings-body">
-          <form onSubmit={handleSave} className="settings-form">
+          <form onSubmit={(e) => e.preventDefault()} className="settings-form">
             <div className="form-group">
-              <label>{t('profile.email')}</label>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <input type="text" value={currentUser.email} disabled className="form-input disabled" style={{ flex: 1 }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                <label style={{ margin: 0 }}>{t('profile.email')}</label>
                 {!showEmailChange && (
                   <button
                     type="button"
-                    className="btn btn-secondary"
-                    style={{ whiteSpace: 'nowrap', padding: '0 15px', fontSize: '14px' }}
                     onClick={() => setShowEmailChange(true)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary-color, #3b82f6)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      padding: 0,
+                      textDecoration: 'underline'
+                    }}
                   >
                     {t('profile.changeEmail')}
                   </button>
                 )}
               </div>
+              <input type="text" value={currentUser.email} disabled className="form-input disabled" />
             </div>
 
             {showEmailChange && (
@@ -397,6 +401,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 type="text" 
                 value={displayName} 
                 onChange={(e) => setDisplayName(e.target.value)} 
+                onBlur={() => {
+                  if (displayName.trim() && displayName !== currentUser.displayName) {
+                    triggerProfileUpdate(displayName, avatarUrl, profileLang);
+                  }
+                }}
                 required 
                 className="form-input" 
               />
@@ -405,7 +414,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <label>{t('profile.language')}</label>
               <select
                 value={profileLang}
-                onChange={(e) => setProfileLang(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setProfileLang(val);
+                  triggerProfileUpdate(displayName, avatarUrl, val);
+                }}
                 className="form-input"
               >
                 <option value="ja">日本語 (Japanese)</option>
@@ -416,7 +429,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <label>{t('sidebar.theme') === 'Theme' ? 'Theme' : 'テーマ'}</label>
               <select
                 value={theme}
-                onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
+                onChange={(e) => {
+                  const val = e.target.value as 'light' | 'dark';
+                  setTheme(val);
+                  localStorage.setItem('cohive_theme', val);
+                  document.documentElement.classList.toggle('theme-light', val === 'light');
+                }}
                 className="form-input"
               >
                 <option value="dark">{t('error') === 'Error' ? 'Dark' : 'ダーク'}</option>
@@ -440,9 +458,6 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </label>
               </div>
             </div>
-            <button type="submit" className="submit-btn" style={{ marginTop: '10px' }} disabled={uploadingAvatar}>
-              {t('profile.save')}
-            </button>
 
           {/* パスワード変更セクション */}
           <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-light)' }}>
