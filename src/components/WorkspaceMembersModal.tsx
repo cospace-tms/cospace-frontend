@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, Shield, Trash2, Users, Sliders, Plus, Menu, Mail, Key, Loader } from 'lucide-react';
+import { X, UserPlus, Shield, Trash2, Users, Sliders, Plus, Menu, Mail, Key, Loader, ArrowUp, ArrowDown, Edit2 } from 'lucide-react';
 import { WorkspaceGroupsTab } from './WorkspaceGroupsTab';
 import { SmtpSettingsTab } from './SmtpSettingsTab';
 import { apiClient } from '../utils/apiClient';
@@ -48,6 +48,40 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [customStatuses, setCustomStatuses] = useState<string[]>([]);
   const [newStatusName, setNewStatusName] = useState('');
+  const [editingStatusIndex, setEditingStatusIndex] = useState<number | null>(null);
+  const [editingStatusValue, setEditingStatusValue] = useState<string>('');
+
+  // カスタムステータスの並び替え
+  const handleMoveStatus = (index: number, direction: 'up' | 'down') => {
+    const newStatuses = [...customStatuses];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newStatuses.length) return;
+
+    const temp = newStatuses[index];
+    newStatuses[index] = newStatuses[targetIndex];
+    newStatuses[targetIndex] = temp;
+
+    setCustomStatuses(newStatuses);
+  };
+
+  // カスタムステータス名の編集保存
+  const handleSaveStatusName = (index: number) => {
+    const trimmed = editingStatusValue.trim();
+    if (!trimmed) {
+      setEditingStatusIndex(null);
+      return;
+    }
+
+    const newStatuses = [...customStatuses];
+    if (newStatuses.some((s, idx) => s === trimmed && idx !== index)) {
+      alert(t('error') === 'Error' ? 'Status name already exists.' : '同じ名前のステータスが既に存在します。');
+      return;
+    }
+
+    newStatuses[index] = trimmed;
+    setCustomStatuses(newStatuses);
+    setEditingStatusIndex(null);
+  };
 
   // 一時パスワード発行ステート
   const [tempPassword, setTempPassword] = useState<string | null>(null);
@@ -268,7 +302,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
         {/* 1. ワークスペース名変更（管理者のみ） */}
         <div className="settings-section" style={{ paddingBottom: '20px', borderBottom: '1px solid var(--border-light)' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '12px' }}>{t('workspace.general')}</h3>
-          <form onSubmit={handleUpdateName} className="settings-form" style={{ flexDirection: 'row', gap: '10px', alignItems: 'flex-end' }}>
+          <form onSubmit={handleUpdateName} className="settings-form-row-responsive">
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label>{t('setup.workspaceName')}</label>
               <input 
@@ -288,7 +322,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
         {isOwner && (
           <div className="settings-section" style={{ paddingBottom: '20px', borderBottom: '1px solid var(--border-light)' }}>
             <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '12px' }}>{t('workspace.invite')}</h3>
-            <form onSubmit={handleAddMember} className="settings-form" style={{ flexDirection: 'row', gap: '10px', alignItems: 'flex-end' }}>
+            <form onSubmit={handleAddMember} className="settings-form-row-responsive">
               <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
                 <label>{t('profile.email')}</label>
                 <input 
@@ -463,36 +497,119 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
           {/* 現在のステータスリスト */}
           <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>{t('workspace.statusOrderLabel')}</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-            {customStatuses.map((status, index) => (
-              <div 
-                key={status} 
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'space-between', 
-                  padding: '10px 14px', 
-                  background: 'var(--bg-secondary)', 
-                  border: '1px solid var(--border-light)', 
-                  borderRadius: '6px' 
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '12px', background: 'var(--border-light)', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: 'var(--text-muted)' }}>
-                    {index + 1}
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: 500 }}>{status}</span>
-                </div>
-                <button 
-                  type="button"
-                  onClick={() => handleRemoveStatus(status)}
-                  className="danger-btn"
-                  style={{ padding: '6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--accent-danger)', border: 'none', cursor: 'pointer' }}
-                  title={t('error') === 'Error' ? 'Delete' : '削除する'}
+            {customStatuses.map((status, index) => {
+              const isEditing = editingStatusIndex === index;
+              return (
+                <div 
+                  key={`status-item-${index}`} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    padding: '10px 14px', 
+                    background: 'var(--bg-secondary)', 
+                    border: '1px solid var(--border-light)', 
+                    borderRadius: '6px',
+                    gap: '12px'
+                  }}
                 >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                    <span style={{ fontSize: '12px', background: 'var(--border-light)', width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', color: 'var(--text-muted)', flexShrink: 0 }}>
+                      {index + 1}
+                    </span>
+                    {isEditing ? (
+                      <input 
+                        type="text" 
+                        value={editingStatusValue}
+                        onChange={(e) => setEditingStatusValue(e.target.value)}
+                        onBlur={() => handleSaveStatusName(index)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveStatusName(index);
+                          else if (e.key === 'Escape') setEditingStatusIndex(null);
+                        }}
+                        autoFocus
+                        className="form-input"
+                        style={{ flex: 1, padding: '4px 8px', fontSize: '13px', margin: 0 }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '13px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {status}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    {!isEditing && (
+                      <>
+                        {/* 上移動ボタン */}
+                        <button
+                          type="button"
+                          onClick={() => handleMoveStatus(index, 'up')}
+                          disabled={index === 0}
+                          style={{
+                            padding: '6px',
+                            borderRadius: '4px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            color: index === 0 ? 'var(--text-muted)' : 'var(--text-primary)',
+                            border: 'none',
+                            cursor: index === 0 ? 'not-allowed' : 'pointer',
+                            opacity: index === 0 ? 0.3 : 1
+                          }}
+                          title={t('error') === 'Error' ? 'Move Up' : '上へ移動'}
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        {/* 下移動ボタン */}
+                        <button
+                          type="button"
+                          onClick={() => handleMoveStatus(index, 'down')}
+                          disabled={index === customStatuses.length - 1}
+                          style={{
+                            padding: '6px',
+                            borderRadius: '4px',
+                            background: 'rgba(255, 255, 255, 0.05)',
+                            color: index === customStatuses.length - 1 ? 'var(--text-muted)' : 'var(--text-primary)',
+                            border: 'none',
+                            cursor: index === customStatuses.length - 1 ? 'not-allowed' : 'pointer',
+                            opacity: index === customStatuses.length - 1 ? 0.3 : 1
+                          }}
+                          title={t('error') === 'Error' ? 'Move Down' : '下へ移動'}
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                        {/* 編集ボタン */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingStatusIndex(index);
+                            setEditingStatusValue(status);
+                          }}
+                          style={{
+                            padding: '6px',
+                            borderRadius: '4px',
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            color: 'var(--accent-primary, #3b82f6)',
+                             border: 'none',
+                            cursor: 'pointer'
+                          }}
+                          title={t('error') === 'Error' ? 'Edit' : '編集する'}
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                      </>
+                    )}
+                    <button 
+                      type="button"
+                      onClick={() => handleRemoveStatus(status)}
+                      className="danger-btn"
+                      style={{ padding: '6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--accent-danger)', border: 'none', cursor: 'pointer' }}
+                      title={t('error') === 'Error' ? 'Delete' : '削除する'}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* 保存ボタン */}
@@ -699,13 +816,12 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
             <button 
               className={`tab-btn-compact ${activeTab === 'members' ? 'active' : ''}`} 
               onClick={() => setActiveTab('members')}
+              title={t('workspace.members')}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: activeTab === 'members' ? '600' : '500',
+                justifyContent: 'center',
+                padding: '6px 10px',
                 color: activeTab === 'members' ? 'var(--accent-primary)' : 'var(--text-muted)',
                 background: activeTab === 'members' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
                 border: 'none',
@@ -715,19 +831,17 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
               }}
             >
               <Shield size={14} />
-              <span>{t('workspace.members')}</span>
             </button>
             {canAccessSettings && (
               <button 
                 className={`tab-btn-compact ${activeTab === 'groups' ? 'active' : ''}`} 
                 onClick={() => setActiveTab('groups')}
+                title={t('workspace.groups')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  fontWeight: activeTab === 'groups' ? '600' : '500',
+                  justifyContent: 'center',
+                  padding: '6px 10px',
                   color: activeTab === 'groups' ? 'var(--accent-primary)' : 'var(--text-muted)',
                   background: activeTab === 'groups' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
                   border: 'none',
@@ -737,20 +851,18 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                 }}
               >
                 <Users size={14} />
-                <span>{t('workspace.groups')}</span>
               </button>
             )}
             {isOwner && (
               <button 
                 className={`tab-btn-compact ${activeTab === 'statuses' ? 'active' : ''}`} 
                 onClick={() => setActiveTab('statuses')}
+                title={t('workspace.statuses')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  fontWeight: activeTab === 'statuses' ? '600' : '500',
+                  justifyContent: 'center',
+                  padding: '6px 10px',
                   color: activeTab === 'statuses' ? 'var(--accent-primary)' : 'var(--text-muted)',
                   background: activeTab === 'statuses' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
                   border: 'none',
@@ -760,20 +872,18 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                 }}
               >
                 <Sliders size={14} />
-                <span>{t('workspace.statuses')}</span>
               </button>
             )}
             {isOwner && (
               <button 
                 className={`tab-btn-compact ${activeTab === 'smtp' ? 'active' : ''}`} 
                 onClick={() => setActiveTab('smtp')}
+                title={t('workspace.smtp')}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  fontWeight: activeTab === 'smtp' ? '600' : '500',
+                  justifyContent: 'center',
+                  padding: '6px 10px',
                   color: activeTab === 'smtp' ? 'var(--accent-primary)' : 'var(--text-muted)',
                   background: activeTab === 'smtp' ? 'var(--bg-active, rgba(255, 255, 255, 0.05))' : 'transparent',
                   border: 'none',
@@ -783,7 +893,6 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                 }}
               >
                 <Mail size={14} />
-                <span>{t('workspace.smtp')}</span>
               </button>
             )}
           </div>

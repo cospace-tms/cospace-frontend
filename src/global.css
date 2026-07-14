@@ -997,6 +997,21 @@ body {
   gap: 24px;
 }
 
+.settings-form-row-responsive {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+@media (min-width: 768px) {
+  .settings-form-row-responsive {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 16px;
+  }
+}
+
 .form-input.disabled {
   opacity: 0.6;
   cursor: not-allowed;
