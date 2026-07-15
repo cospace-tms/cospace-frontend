@@ -197,9 +197,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     setPushLoading(true);
     setPushMessage(null);
     try {
-      const res = await apiClient.post<{ success: boolean; error?: string }>('/api/push/test', {});
+      const res = await apiClient.post<{ success: boolean; message?: string; error?: string }>('/api/push/test', {});
       if (res.success) {
-        setPushMessage({ text: 'テスト通知を送信しました。数秒以内にプッシュ通知が届くか確認してください。', type: 'success' });
+        setPushMessage({ text: res.message || 'テスト通知を送信しました。数秒以内にプッシュ通知が届くか確認してください。', type: 'success' });
       } else {
         throw new Error(res.error || '送信に失敗しました。');
       }
