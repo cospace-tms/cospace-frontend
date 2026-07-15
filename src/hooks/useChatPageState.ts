@@ -240,6 +240,16 @@ export const useChatPageState = ({
     apiSendMessage,
   });
 
+  const handleSendMessageWithSync = useCallback(async (
+    content: string, 
+    fileUrl?: string | null, 
+    fileName?: string | null, 
+    fileSize?: number | null
+  ) => {
+    await sendMessage(content, fileUrl, fileName, fileSize);
+    triggerImmediatePoll.current();
+  }, [sendMessage]);
+
   // 4. メッセージフェッチロジック (ポーリングから呼び出す)
   const lastFetchedIdRef = useRef<string | null>(null);
 
@@ -277,9 +287,8 @@ export const useChatPageState = ({
   const pollingInfo = usePolling({
     channelId: activeChannelId,
     onFetch: fetchNewMessages,
-    minInterval: 5000,
-    maxInterval: 30000,
   });
+  const { triggerImmediatePoll } = pollingInfo;
 
   // チャンネル切り替え時にフェッチの基準となるメッセージIDをリセット
   useEffect(() => {
@@ -653,6 +662,7 @@ export const useChatPageState = ({
 
     try {
       await apiClient.post<{ success: boolean }>(`/api/messages/${messageId}/reactions`, { emoji });
+      triggerImmediatePoll.current();
     } catch (err: any) {
       console.error('Failed to toggle reaction:', err);
       toggleLocalReaction(messageId, emoji, chatUser);
@@ -835,7 +845,7 @@ export const useChatPageState = ({
     workspaceDocText,
     handleSaveWorkspaceDoc,
     messages,
-    sendMessage,
+    sendMessage: handleSendMessageWithSync,
     retryMessage,
     deleteFailedMessage,
     pollingInfo,

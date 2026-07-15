@@ -66,6 +66,8 @@ export const InboxArea: React.FC<InboxAreaProps> = ({
         return <UserPlus size={16} style={{ color: '#f59e0b' }} />;
       case 'task_done':
         return <CheckCircle2 size={16} style={{ color: '#10b981' }} />;
+      case 'invite':
+        return <UserPlus size={16} style={{ color: 'var(--accent-primary, #4f46e5)' }} />;
       default:
         return <Inbox size={16} style={{ color: 'var(--text-muted)' }} />;
     }
@@ -82,6 +84,8 @@ export const InboxArea: React.FC<InboxAreaProps> = ({
         return isEn ? 'Assign' : 'タスク担当';
       case 'task_done':
         return isEn ? 'Completed' : 'タスク完了';
+      case 'invite':
+        return isEn ? 'Invitation' : '招待';
       default:
         return isEn ? 'Notice' : '通知';
     }

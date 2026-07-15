@@ -352,8 +352,8 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                 </select>
               </div>
               <button type="submit" className="submit-btn" style={{ padding: '11px 20px', display: 'flex', alignItems: 'center', gap: '6px' }} disabled={addingMember}>
-                <UserPlus size={16} />
-                <span>{t('workspace.add')}</span>
+                {addingMember ? <Loader className="animate-spin" size={16} /> : <UserPlus size={16} />}
+                <span>{addingMember ? t('workspace.inviting') : t('workspace.add')}</span>
               </button>
             </form>
           </div>

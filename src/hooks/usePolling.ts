@@ -8,9 +8,9 @@ interface UsePollingOptions {
    * 新しく取得したメッセージの件数をPromiseで返す必要があります。
    */
   onFetch: () => Promise<number>;
-  /** 最小ポーリング間隔 (ミリ秒)。デフォルトは 5000ms (5秒) */
+  /** 最小ポーリング間隔 (ミリ秒)。デフォルトは 3000ms (3秒) */
   minInterval?: number;
-  /** 最大ポーリング間隔 (ミリ秒)。デフォルトは 30000ms (30秒) */
+  /** 最大ポーリング間隔 (ミリ秒)。デフォルトは 60000ms (60秒) */
   maxInterval?: number;
 }
 
@@ -21,8 +21,8 @@ interface UsePollingOptions {
 export function usePolling({
   channelId,
   onFetch,
-  minInterval = 5000,
-  maxInterval = 30000,
+  minInterval = 3000,
+  maxInterval = 60000,
 }: UsePollingOptions) {
   // 現在のポーリング間隔
   const [intervalTime, setIntervalTime] = useState<number>(minInterval);
@@ -77,7 +77,37 @@ export function usePolling({
     }
   }, [channelId, minInterval]);
 
-  // 3. setInterval と clearInterval によるポーリング制御
+  // 3. 即時ポーリングを実行し、間隔をリセットする関数
+  const triggerImmediatePoll = useRef(async () => {
+    if (!channelId || document.visibilityState !== 'visible') return;
+    
+    consecutiveEmptyCount.current = 0;
+    setIntervalTime(minInterval);
+    
+    try {
+      await onFetchRef.current();
+    } catch (err) {
+      console.error('Immediate fetch failed:', err);
+    }
+  });
+
+  // triggerImmediatePollの依存パラメータや参照を最新化するためのEffect（ループ回避・再生成最小化）
+  useEffect(() => {
+    triggerImmediatePoll.current = async () => {
+      if (!channelId || document.visibilityState !== 'visible') return;
+      
+      consecutiveEmptyCount.current = 0;
+      setIntervalTime(minInterval);
+      
+      try {
+        await onFetchRef.current();
+      } catch (err) {
+        console.error('Immediate fetch failed:', err);
+      }
+    };
+  }, [channelId, minInterval]);
+
+  // 4. setInterval と clearInterval によるポーリング制御
   useEffect(() => {
     // 既存のタイマーをクリア (clearInterval)
     if (intervalIdRef.current) {
@@ -139,5 +169,6 @@ export function usePolling({
     intervalTime,
     isActive,
     consecutiveEmptyCount: consecutiveEmptyCount.current,
+    triggerImmediatePoll: () => triggerImmediatePoll.current(),
   };
 }

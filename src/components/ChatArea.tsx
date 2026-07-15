@@ -89,6 +89,30 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [inputText, setInputText] = useState('');
   const isEmojiAdmin = currentUserRole === 'owner' || currentUserRole === 'group_admin';
 
+  // メンション候補サジェスト用のState
+  const [showMentionSuggest, setShowMentionSuggest] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionTriggerIndex, setMentionTriggerIndex] = useState(-1);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // メンション候補の構築
+  const mentionCandidates = React.useMemo(() => {
+    const allCandidate = { userId: 'all', displayName: 'all', isAll: true };
+    const memberCandidates = workspaceMembers.map((m: any) => ({
+      userId: m.userId,
+      displayName: m.displayName || m.email.split('@')[0],
+      avatarUrl: m.avatarUrl,
+      isAll: false
+    }));
+    
+    const list = [allCandidate, ...memberCandidates];
+    if (!mentionQuery) return list;
+    
+    const query = mentionQuery.toLowerCase();
+    return list.filter(item => item.displayName.toLowerCase().includes(query));
+  }, [workspaceMembers, mentionQuery]);
+
   // サブヘッダーの左側ポータル用 DOM ノード
   const [docSubheaderLeftNode, setDocSubheaderLeftNode] = useState<HTMLDivElement | null>(null);
   const [tasksSubheaderLeftNode, setTasksSubheaderLeftNode] = useState<HTMLDivElement | null>(null);
@@ -429,6 +453,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
     setInputText(''); // 送信後入力欄を即クリア
     setAttachedFile(null); // 添付ファイルもクリア
+    setShowMentionSuggest(false); // メンション候補を非表示
+    setMentionTriggerIndex(-1);
 
     await onSendMessage(
       textToSend,
@@ -438,7 +464,78 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     );
   };
 
+  const insertMention = useCallback((candidate: any) => {
+    if (mentionTriggerIndex === -1 || !textareaRef.current) return;
+    
+    const value = inputText;
+    const beforeMention = value.substring(0, mentionTriggerIndex);
+    const afterMention = value.substring(textareaRef.current.selectionStart);
+    const mentionText = `@${candidate.displayName} `;
+    
+    const newValue = beforeMention + mentionText + afterMention;
+    setInputText(newValue);
+    setShowMentionSuggest(false);
+    setMentionTriggerIndex(-1);
+    
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        const newCursorPos = beforeMention.length + mentionText.length;
+        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 10);
+  }, [inputText, mentionTriggerIndex]);
+
+  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setInputText(value);
+
+    const selectionStart = e.target.selectionStart;
+    const textBeforeCaret = value.substring(0, selectionStart);
+    
+    const lastAtIndex = textBeforeCaret.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCaret.substring(lastAtIndex + 1);
+      const isValidTrigger = lastAtIndex === 0 || /\s/.test(textBeforeCaret[lastAtIndex - 1]);
+      const hasSpaceAfterAt = /\s/.test(textAfterAt);
+      
+      if (isValidTrigger && !hasSpaceAfterAt) {
+        setShowMentionSuggest(true);
+        setMentionQuery(textAfterAt);
+        setMentionTriggerIndex(lastAtIndex);
+        setMentionIndex(0);
+        return;
+      }
+    }
+    
+    setShowMentionSuggest(false);
+    setMentionTriggerIndex(-1);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showMentionSuggest && mentionCandidates.length > 0) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev + 1) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setMentionIndex(prev => (prev - 1 + mentionCandidates.length) % mentionCandidates.length);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        insertMention(mentionCandidates[mentionIndex]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowMentionSuggest(false);
+        return;
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend(e);
@@ -1427,7 +1524,91 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
 
             {/* 3. 送信フォーム */}
-            <div className="chat-input-container">
+            <div className="chat-input-container" style={{ position: 'relative' }}>
+              {showMentionSuggest && mentionCandidates.length > 0 && (
+                <div 
+                  className="mention-suggest-popover"
+                  style={{
+                    position: 'absolute',
+                    bottom: '100%',
+                    left: '12px',
+                    right: '12px',
+                    zIndex: 200,
+                    background: 'var(--bg-panel, #1f2937)',
+                    border: '1px solid var(--border-light, #374151)',
+                    borderRadius: '8px',
+                    boxShadow: '0 -4px 12px rgba(0,0,0,0.15), 0 4px 12px rgba(0,0,0,0.15)',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    marginBottom: '8px',
+                    padding: '4px 0'
+                  }}
+                >
+                  {mentionCandidates.map((candidate, idx) => {
+                    const isActive = idx === mentionIndex;
+                    return (
+                      <div
+                        key={candidate.userId}
+                        onClick={() => insertMention(candidate)}
+                        onMouseEnter={() => setMentionIndex(idx)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          cursor: 'pointer',
+                          background: isActive ? 'var(--accent-primary, #4f46e5)' : 'transparent',
+                          color: isActive ? '#ffffff' : 'var(--text-primary, #f3f4f6)',
+                          transition: 'background 0.15s, color 0.15s',
+                          fontSize: '13px'
+                        }}
+                      >
+                        {candidate.isAll ? (
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: isActive ? 'rgba(255,255,255,0.2)' : 'var(--border-light, #374151)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 600,
+                            fontSize: '11px'
+                          }}>
+                            ALL
+                          </div>
+                        ) : (
+                          candidate.avatarUrl ? (
+                            <img 
+                              src={candidate.avatarUrl} 
+                              alt={candidate.displayName}
+                              style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }}
+                            />
+                          ) : (
+                            <div style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              background: isActive ? 'rgba(255,255,255,0.2)' : 'var(--border-light, #374151)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 600,
+                              fontSize: '11px',
+                              textTransform: 'uppercase'
+                            }}>
+                              {candidate.displayName[0]}
+                            </div>
+                          )
+                        )}
+                        <span style={{ fontWeight: 500 }}>
+                          {candidate.isAll ? 'all (全員宛て)' : candidate.displayName}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               {/* 返信先のプレビュー表示 */}
               {replyTargetMessage && (
                 <div className="chat-input-reply-preview">
@@ -1447,10 +1628,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
               )}
               <form onSubmit={handleSend} className={`chat-input-wrapper ${replyTargetMessage ? 'has-reply-preview' : ''}`}>
                 <textarea
+                  ref={textareaRef}
                   className="chat-textarea"
                   placeholder={isEn ? `Message #${channelName}` : `#${channelName} へのメッセージ`}
                   value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
+                  onChange={handleTextareaChange}
                   onKeyDown={handleKeyDown}
                 />
                 <div className="chat-input-actions">
