@@ -88,6 +88,118 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   }, [isOpen, currentUser]);
 
+  // プッシュ通知ステート
+  const [pushStatus, setPushStatus] = useState<'granted' | 'default' | 'denied' | 'unsupported'>('default');
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushMessage, setPushMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // 購読状態の確認
+  const checkPushSubscription = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushStatus('unsupported');
+      return;
+    }
+    setPushStatus(Notification.permission);
+    
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      setHasSubscription(!!subscription);
+    } catch (err) {
+      console.error('Failed to check push subscription:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      checkPushSubscription();
+      setPushMessage(null);
+    }
+  }, [isOpen]);
+
+  // プッシュ通知を手動で有効化（iOSなどの直接インタラクション対策）
+  const handleEnablePush = async () => {
+    setPushLoading(true);
+    setPushMessage(null);
+
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        throw new Error('このブラウザはプッシュ通知に対応していません。');
+      }
+
+      // 許可を求める
+      const permission = await Notification.requestPermission();
+      setPushStatus(permission);
+      if (permission !== 'granted') {
+        throw new Error('通知の権限が拒否されました。ブラウザの設定から許可してください。');
+      }
+
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      
+      // VAPID公開鍵の取得
+      const { publicKey } = await apiClient.get<{ publicKey: string }>('/api/push/vapid-public-key');
+
+      const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      };
+
+      const convertedVapidKey = urlBase64ToUint8Array(publicKey);
+      
+      // 購読を作成
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey
+      });
+
+      // バックエンドに送信
+      const subJson = subscription.toJSON();
+      await apiClient.post('/api/push/subscribe', {
+        subscription: {
+          endpoint: subJson.endpoint,
+          keys: {
+            p256dh: subJson.keys?.p256dh,
+            auth: subJson.keys?.auth
+          }
+        }
+      });
+
+      setHasSubscription(true);
+      setPushMessage({ text: 'プッシュ通知の購読登録が完了しました！', type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      setPushMessage({ text: err.message || 'プッシュ通知の設定に失敗しました。', type: 'error' });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  // テストプッシュ通知の送信
+  const handleTestPush = async () => {
+    setPushLoading(true);
+    setPushMessage(null);
+    try {
+      const res = await apiClient.post<{ success: boolean; error?: string }>('/api/push/test', {});
+      if (res.success) {
+        setPushMessage({ text: 'テスト通知を送信しました。数秒以内にプッシュ通知が届くか確認してください。', type: 'success' });
+      } else {
+        throw new Error(res.error || '送信に失敗しました。');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setPushMessage({ text: err.message || 'テスト通知の送信に失敗しました。サブスクリプションが登録されていない可能性があります。', type: 'error' });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -251,117 +363,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
-  // プッシュ通知ステート
-  const [pushStatus, setPushStatus] = useState<'granted' | 'default' | 'denied' | 'unsupported'>('default');
-  const [hasSubscription, setHasSubscription] = useState(false);
-  const [pushLoading, setPushLoading] = useState(false);
-  const [pushMessage, setPushMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // 購読状態の確認
-  const checkPushSubscription = async () => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setPushStatus('unsupported');
-      return;
-    }
-    setPushStatus(Notification.permission);
-    
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      const subscription = await registration.pushManager.getSubscription();
-      setHasSubscription(!!subscription);
-    } catch (err) {
-      console.error('Failed to check push subscription:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (isOpen) {
-      checkPushSubscription();
-      setPushMessage(null);
-    }
-  }, [isOpen]);
-
-  // プッシュ通知を手動で有効化（iOSなどの直接インタラクション対策）
-  const handleEnablePush = async () => {
-    setPushLoading(true);
-    setPushMessage(null);
-
-    try {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        throw new Error('このブラウザはプッシュ通知に対応していません。');
-      }
-
-      // 許可を求める
-      const permission = await Notification.requestPermission();
-      setPushStatus(permission);
-      if (permission !== 'granted') {
-        throw new Error('通知の権限が拒否されました。ブラウザの設定から許可してください。');
-      }
-
-      const registration = await navigator.serviceWorker.register('/sw.js');
-      
-      // VAPID公開鍵の取得
-      const { publicKey } = await apiClient.get<{ publicKey: string }>('/api/push/vapid-public-key');
-
-      const urlBase64ToUint8Array = (base64String: string) => {
-        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-        const rawData = window.atob(base64);
-        const outputArray = new Uint8Array(rawData.length);
-        for (let i = 0; i < rawData.length; ++i) {
-          outputArray[i] = rawData.charCodeAt(i);
-        }
-        return outputArray;
-      };
-
-      const convertedVapidKey = urlBase64ToUint8Array(publicKey);
-      
-      // 購読を作成
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey
-      });
-
-      // バックエンドに送信
-      const subJson = subscription.toJSON();
-      await apiClient.post('/api/push/subscribe', {
-        subscription: {
-          endpoint: subJson.endpoint,
-          keys: {
-            p256dh: subJson.keys?.p256dh,
-            auth: subJson.keys?.auth
-          }
-        }
-      });
-
-      setHasSubscription(true);
-      setPushMessage({ text: 'プッシュ通知の購読登録が完了しました！', type: 'success' });
-    } catch (err: any) {
-      console.error(err);
-      setPushMessage({ text: err.message || 'プッシュ通知の設定に失敗しました。', type: 'error' });
-    } finally {
-      setPushLoading(false);
-    }
-  };
-
-  // テストプッシュ通知の送信
-  const handleTestPush = async () => {
-    setPushLoading(true);
-    setPushMessage(null);
-    try {
-      const res = await apiClient.post<{ success: boolean; error?: string }>('/api/push/test', {});
-      if (res.success) {
-        setPushMessage({ text: 'テスト通知を送信しました。数秒以内にプッシュ通知が届くか確認してください。', type: 'success' });
-      } else {
-        throw new Error(res.error || '送信に失敗しました。');
-      }
-    } catch (err: any) {
-      console.error(err);
-      setPushMessage({ text: err.message || 'テスト通知の送信に失敗しました。サブスクリプションが登録されていない可能性があります。', type: 'error' });
-    } finally {
-      setPushLoading(false);
-    }
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
