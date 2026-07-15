@@ -17,8 +17,7 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body,
-    icon: '/favicon.ico', // 公開ディレクトリに存在するアイコンを指定
-    badge: '/favicon.ico',
+    // 401 Unauthorized等の画像ロード失敗による通知表示クラッシュを防ぐためアイコン指定を排除
     data: {
       linkUrl: data.linkUrl
     },

@@ -105,7 +105,29 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      setHasSubscription(!!subscription);
+      
+      if (subscription) {
+        // バックエンドにこのデバイスのエンドポイントが本当に登録されているか確認
+        try {
+          const res = await apiClient.post<{ registered: boolean }>('/api/push/check-registration', {
+            endpoint: subscription.endpoint
+          });
+          if (res.registered) {
+            setHasSubscription(true);
+          } else {
+            // クライアント側にはあるがDBにない不整合（DB再セットアップ後など）の場合は自動で古い購読を解除
+            console.log('Push subscription exists on client but not in backend DB. Unsubscribing client.');
+            await subscription.unsubscribe();
+            setHasSubscription(false);
+          }
+        } catch (apiErr) {
+          console.error('Failed to verify push registration with backend:', apiErr);
+          // APIエラーの場合は安全のためローカルの値を優先
+          setHasSubscription(true);
+        }
+      } else {
+        setHasSubscription(false);
+      }
     } catch (err) {
       console.error('Failed to check push subscription:', err);
     }
@@ -719,38 +741,41 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                type="button" 
-                onClick={handleEnablePush}
-                disabled={pushLoading || pushStatus === 'unsupported'}
-                className="submit-btn" 
-                style={{ 
-                  flex: 1, 
-                  background: 'var(--accent-primary, #4f46e5)', 
-                  color: '#fff', 
-                  border: 'none',
-                  fontSize: '12px',
-                  padding: '8px 12px'
-                }}
-              >
-                {pushLoading ? <Loader className="animate-spin" size={14} /> : (t('error') === 'Error' ? 'Enable Push' : '通知を有効にする')}
-              </button>
-              <button 
-                type="button" 
-                onClick={handleTestPush}
-                disabled={pushLoading || !hasSubscription}
-                className="submit-btn" 
-                style={{ 
-                  flex: 1, 
-                  background: 'rgba(255,255,255,0.05)', 
-                  color: '#fff', 
-                  border: '1px solid var(--border-light)',
-                  fontSize: '12px',
-                  padding: '8px 12px'
-                }}
-              >
-                {t('error') === 'Error' ? 'Send Test Push' : 'テスト通知を送信'}
-              </button>
+              {!hasSubscription ? (
+                <button 
+                  type="button" 
+                  onClick={handleEnablePush}
+                  disabled={pushLoading || pushStatus === 'unsupported'}
+                  className="submit-btn" 
+                  style={{ 
+                    flex: 1, 
+                    background: 'var(--accent-primary, #4f46e5)', 
+                    color: '#fff', 
+                    border: 'none',
+                    fontSize: '12px',
+                    padding: '8px 12px'
+                  }}
+                >
+                  {pushLoading ? <Loader className="animate-spin" size={14} /> : (t('error') === 'Error' ? 'Enable Push' : '通知を有効にする')}
+                </button>
+              ) : (
+                <button 
+                  type="button" 
+                  onClick={handleTestPush}
+                  disabled={pushLoading}
+                  className="submit-btn" 
+                  style={{ 
+                    flex: 1, 
+                    background: 'var(--accent-primary, #4f46e5)', 
+                    color: '#fff', 
+                    border: 'none',
+                    fontSize: '12px',
+                    padding: '8px 12px'
+                  }}
+                >
+                  {t('error') === 'Error' ? 'Send Test Push' : 'テスト通知を送信'}
+                </button>
+              )}
             </div>
 
             {hasSubscription && (
