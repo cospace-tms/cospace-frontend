@@ -251,6 +251,118 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
+  // プッシュ通知ステート
+  const [pushStatus, setPushStatus] = useState<'granted' | 'default' | 'denied' | 'unsupported'>('default');
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+  const [pushMessage, setPushMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  // 購読状態の確認
+  const checkPushSubscription = async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushStatus('unsupported');
+      return;
+    }
+    setPushStatus(Notification.permission);
+    
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const subscription = await registration.pushManager.getSubscription();
+      setHasSubscription(!!subscription);
+    } catch (err) {
+      console.error('Failed to check push subscription:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      checkPushSubscription();
+      setPushMessage(null);
+    }
+  }, [isOpen]);
+
+  // プッシュ通知を手動で有効化（iOSなどの直接インタラクション対策）
+  const handleEnablePush = async () => {
+    setPushLoading(true);
+    setPushMessage(null);
+
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        throw new Error('このブラウザはプッシュ通知に対応していません。');
+      }
+
+      // 許可を求める
+      const permission = await Notification.requestPermission();
+      setPushStatus(permission);
+      if (permission !== 'granted') {
+        throw new Error('通知の権限が拒否されました。ブラウザの設定から許可してください。');
+      }
+
+      const registration = await navigator.serviceWorker.register('/sw.js');
+      
+      // VAPID公開鍵の取得
+      const { publicKey } = await apiClient.get<{ publicKey: string }>('/api/push/vapid-public-key');
+
+      const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      };
+
+      const convertedVapidKey = urlBase64ToUint8Array(publicKey);
+      
+      // 購読を作成
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: convertedVapidKey
+      });
+
+      // バックエンドに送信
+      const subJson = subscription.toJSON();
+      await apiClient.post('/api/push/subscribe', {
+        subscription: {
+          endpoint: subJson.endpoint,
+          keys: {
+            p256dh: subJson.keys?.p256dh,
+            auth: subJson.keys?.auth
+          }
+        }
+      });
+
+      setHasSubscription(true);
+      setPushMessage({ text: 'プッシュ通知の購読登録が完了しました！', type: 'success' });
+    } catch (err: any) {
+      console.error(err);
+      setPushMessage({ text: err.message || 'プッシュ通知の設定に失敗しました。', type: 'error' });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
+  // テストプッシュ通知の送信
+  const handleTestPush = async () => {
+    setPushLoading(true);
+    setPushMessage(null);
+    try {
+      const res = await apiClient.post<{ success: boolean; error?: string }>('/api/push/test', {});
+      if (res.success) {
+        setPushMessage({ text: 'テスト通知を送信しました。数秒以内にプッシュ通知が届くか確認してください。', type: 'success' });
+      } else {
+        throw new Error(res.error || '送信に失敗しました。');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setPushMessage({ text: err.message || 'テスト通知の送信に失敗しました。サブスクリプションが登録されていない可能性があります。', type: 'error' });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content settings-modal" style={{ maxWidth: '450px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
@@ -520,6 +632,85 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             >
               {t('profile.pwChangeBtn')}
             </button>
+          </div>
+
+          {/* プッシュ通知設定セクション */}
+          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border-light)' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', color: 'var(--text-primary)' }}>
+              {t('error') === 'Error' ? 'Push Notification Settings' : 'プッシュ通知設定'}
+            </h3>
+
+            {pushMessage && (
+              <div style={{
+                padding: '8px 12px',
+                background: pushMessage.type === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                color: pushMessage.type === 'success' ? '#10b981' : '#ef4444',
+                borderRadius: '6px',
+                fontSize: '12px',
+                marginBottom: '12px',
+                border: pushMessage.type === 'success' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
+              }}>
+                {pushMessage.text}
+              </div>
+            )}
+
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: '1.5' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <span>{t('error') === 'Error' ? 'Browser Permission:' : 'ブラウザ通知権限:'}</span>
+                <span style={{ fontWeight: 'bold', color: pushStatus === 'granted' ? '#10b981' : pushStatus === 'denied' ? '#ef4444' : '#f59e0b' }}>
+                  {pushStatus === 'granted' ? '許可 (Granted)' : pushStatus === 'denied' ? 'ブロック (Denied)' : pushStatus === 'unsupported' ? '未対応 (Unsupported)' : 'デフォルト (Default)'}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{t('error') === 'Error' ? 'Push Subscription:' : 'プッシュ購読登録:'}</span>
+                <span style={{ fontWeight: 'bold', color: hasSubscription ? '#10b981' : '#ef4444' }}>
+                  {hasSubscription ? '登録済み (Registered)' : '未登録 (Not Registered)'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button 
+                type="button" 
+                onClick={handleEnablePush}
+                disabled={pushLoading || pushStatus === 'unsupported'}
+                className="submit-btn" 
+                style={{ 
+                  flex: 1, 
+                  background: 'var(--accent-primary, #4f46e5)', 
+                  color: '#fff', 
+                  border: 'none',
+                  fontSize: '12px',
+                  padding: '8px 12px'
+                }}
+              >
+                {pushLoading ? <Loader className="animate-spin" size={14} /> : (t('error') === 'Error' ? 'Enable Push' : '通知を有効にする')}
+              </button>
+              <button 
+                type="button" 
+                onClick={handleTestPush}
+                disabled={pushLoading || !hasSubscription}
+                className="submit-btn" 
+                style={{ 
+                  flex: 1, 
+                  background: 'rgba(255,255,255,0.05)', 
+                  color: '#fff', 
+                  border: '1px solid var(--border-light)',
+                  fontSize: '12px',
+                  padding: '8px 12px'
+                }}
+              >
+                {t('error') === 'Error' ? 'Send Test Push' : 'テスト通知を送信'}
+              </button>
+            </div>
+            {pushStatus === 'denied' && (
+              <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px', lineHeight: '1.4' }}>
+                ※通知許可がブロックされています。ブラウザの設定から通知の許可を変更してください。
+              </p>
+            )}
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: '1.4' }}>
+              ※iOS/iPhone環境では、ホーム画面にPWAとして追加した状態で、上記の「通知を有効にする」ボタンをタップすることで、プッシュ通知の購読登録が行えます。
+            </p>
           </div>
         </form>
         </div>
