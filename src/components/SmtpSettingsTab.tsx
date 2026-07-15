@@ -19,6 +19,7 @@ export const SmtpSettingsTab: React.FC = () => {
   const [user, setUser] = useState('');
   const [pass, setPass] = useState('');
   const [fromName, setFromName] = useState('');
+  const [mfaEnabled, setMfaEnabled] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
@@ -35,13 +36,14 @@ export const SmtpSettingsTab: React.FC = () => {
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const res = await apiClient.get<{ settings: SmtpSettings | null }>('/api/settings/smtp');
+        const res = await apiClient.get<{ settings: SmtpSettings & { mfaEnabled?: boolean } | null }>('/api/settings/smtp');
         if (res && res.settings) {
           setHost(res.settings.host);
           setPort(res.settings.port.toString());
           setUser(res.settings.user);
           setPass(res.settings.pass);
           setFromName(res.settings.fromName || '');
+          setMfaEnabled(!!res.settings.mfaEnabled);
           setHasSettings(true);
           
           // テスト送信の宛先の初期値に設定者自身のメアドを入れておく
@@ -71,6 +73,7 @@ export const SmtpSettingsTab: React.FC = () => {
         user,
         pass,
         fromName,
+        mfaEnabled,
       });
 
       if (res.success) {
@@ -103,6 +106,7 @@ export const SmtpSettingsTab: React.FC = () => {
         setUser('');
         setPass('');
         setFromName('');
+        setMfaEnabled(false);
         setHasSettings(false);
         setMessage({ type: 'success', text: isEn ? 'SMTP settings cleared. Email delivery is now disabled.' : 'SMTP設定をクリアしました。メール送信は無効になりました。' });
       }
@@ -127,6 +131,7 @@ export const SmtpSettingsTab: React.FC = () => {
         user,
         pass,
         fromName,
+        mfaEnabled,
         to: testRecipient.trim(),
       });
 
@@ -308,6 +313,20 @@ export const SmtpSettingsTab: React.FC = () => {
               onChange={(e) => setFromName(e.target.value)}
               disabled={loading}
             />
+          </div>
+
+          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '4px', marginBottom: '8px' }}>
+            <input
+              type="checkbox"
+              id="smtp-mfa-enabled"
+              checked={mfaEnabled}
+              onChange={(e) => setMfaEnabled(e.target.checked)}
+              disabled={loading}
+              style={{ width: 'auto', margin: 0, cursor: 'pointer' }}
+            />
+            <label htmlFor="smtp-mfa-enabled" style={{ margin: 0, cursor: 'pointer', fontSize: '13px', display: 'inline-block', color: 'var(--text-primary)' }}>
+              {isEn ? 'Enable Two-Factor Authentication (MFA) on Login' : 'ログイン時に2段階認証 (MFA) を有効化する'}
+            </label>
           </div>
 
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>

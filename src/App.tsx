@@ -28,6 +28,13 @@ function AppContent() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginLoading, setLoginLoading] = useState(false);
 
+  // MFA (2段階認証) 用の状態
+  const [mfaRequired, setMfaRequired] = useState(false);
+  const [tempSessionId, setTempSessionId] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
+  const [mfaError, setMfaError] = useState<string | null>(null);
+  const [mfaLoading, setMfaLoading] = useState(false);
+
   // パスワード復旧用の入力状態
   const [showRecovery, setShowRecovery] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
@@ -135,10 +142,18 @@ function AppContent() {
     try {
       const response = await apiClient.post<{
         success: boolean;
-        data: UserSession;
+        data: UserSession & { mfaRequired?: boolean; tempSessionId?: string };
       }>('/api/auth/login', { email, password });
 
       if (response.success && response.data) {
+        if (response.data.mfaRequired) {
+          setMfaRequired(true);
+          setTempSessionId(response.data.tempSessionId || '');
+          setMfaCode('');
+          setMfaError(null);
+          return;
+        }
+
         localStorage.setItem('cohive_session', JSON.stringify(response.data));
         apiClient.setWorkspaceId(response.data.workspaceId);
         apiClient.setUserId(response.data.id);
@@ -156,6 +171,48 @@ function AppContent() {
     } finally {
       setLoginLoading(false);
     }
+  };
+
+  // 3-2. MFA (2段階認証) 検証ハンドラー
+  const handleMfaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMfaError(null);
+    setMfaLoading(true);
+
+    try {
+      const response = await apiClient.post<{
+        success: boolean;
+        data: UserSession;
+      }>('/api/auth/login/verify', { tempSessionId, code: mfaCode });
+
+      if (response.success && response.data) {
+        localStorage.setItem('cohive_session', JSON.stringify(response.data));
+        apiClient.setWorkspaceId(response.data.workspaceId);
+        apiClient.setUserId(response.data.id);
+        if (response.data.token) {
+          apiClient.setToken(response.data.token);
+        }
+        setSession(response.data);
+        if (response.data.language === 'ja' || response.data.language === 'en') {
+          setLanguage(response.data.language);
+        }
+        setMfaRequired(false);
+        setTempSessionId('');
+        setMfaCode('');
+        return;
+      }
+    } catch (err: any) {
+      setMfaError(err.message || (t('error') === 'Error' ? 'Verification failed.' : '認証コードが正しくないか、期限が切れています。'));
+    } finally {
+      setMfaLoading(false);
+    }
+  };
+
+  const handleMfaCancel = () => {
+    setMfaRequired(false);
+    setTempSessionId('');
+    setMfaCode('');
+    setMfaError(null);
   };
 
   // 4. リカバリーコードによるパスワード再設定ハンドラー
@@ -367,6 +424,56 @@ function AppContent() {
         </button>
       </div>
     );
+
+    if (mfaRequired) {
+      return (
+        <div className="setup-container" style={{ position: 'relative' }}>
+          {renderLangSelector()}
+          <div className="setup-card" style={{ maxWidth: '400px' }}>
+            <h2 className="setup-title">{language === 'ja' ? '2段階認証' : 'Two-Factor Authentication'}</h2>
+            <p className="setup-subtitle">
+              {language === 'ja' 
+                ? '登録されたメールアドレス宛てに送信された6桁の認証コードを入力してください。' 
+                : 'Please enter the 6-digit verification code sent to your registered email address.'}
+            </p>
+
+            {mfaError && <div className="alert-error" style={{ marginBottom: '15px' }}>{mfaError}</div>}
+
+            <form onSubmit={handleMfaSubmit}>
+              <div className="form-group">
+                <label className="form-label">{language === 'ja' ? '認証コード' : 'Verification Code'}</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="123456"
+                  maxLength={6}
+                  value={mfaCode}
+                  onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+                  required
+                  disabled={mfaLoading}
+                  style={{ textAlign: 'center', fontSize: '20px', letterSpacing: '4px' }}
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }} disabled={mfaLoading || mfaCode.length !== 6}>
+                {mfaLoading 
+                  ? (language === 'ja' ? '認証中...' : 'Verifying...') 
+                  : (language === 'ja' ? '確認' : 'Verify')}
+              </button>
+            </form>
+
+            <button
+              className="btn btn-secondary"
+              style={{ width: '100%', marginTop: '10px' }}
+              onClick={handleMfaCancel}
+              disabled={mfaLoading}
+            >
+              {language === 'ja' ? 'ログイン画面に戻る' : 'Back to Login'}
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     if (showRecovery) {
       return (
