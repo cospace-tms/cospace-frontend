@@ -3,6 +3,7 @@ import { SetupPage } from './pages/SetupPage';
 import { ChatPage } from './pages/ChatPage';
 import { apiClient } from './utils/apiClient';
 import { LanguageProvider, useLanguage } from './utils/i18n';
+import { Loader } from 'lucide-react';
 import './global.css';
 
 interface UserSession {
@@ -43,6 +44,27 @@ function AppContent() {
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [recoverySuccess, setRecoverySuccess] = useState<string | null>(null);
   const [recoveryLoading, setRecoveryLoading] = useState(false);
+
+  // PWA/ServiceWorker アップデート通知用の状態
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null);
+
+  // 新しいService Workerを適用してページをリロードする処理
+  const handleApplyUpdate = () => {
+    if (waitingWorker) {
+      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+    }
+    setShowUpdateBanner(false);
+    
+    // 新しいSWがアクティブになった段階でページをリロード
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
+    // controllerchangeが発火しない場合に備え1秒後に強制リロード
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
 
   // 1. 初期状態チェック (サイレントリフレッシュによるセッション復元 & セットアップ要否判定)
   useEffect(() => {
@@ -263,7 +285,7 @@ function AppContent() {
       }
     } catch (err: any) {
       console.error('Recovery failed:', err);
-      setRecoveryError(err.message || t('recovery.backToLogin') === 'Back to Login' ? 'Failed to reset password. Please check your recovery code.' : 'パスワードの再設定に失敗しました。リカバリーコードを確認してください。');
+      setRecoveryError(err.message || (t('recovery.backToLogin') === 'Back to Login' ? 'Failed to reset password. Please check your recovery code.' : 'パスワードの再設定に失敗しました。リカバリーコードを確認してください。'));
     } finally {
       setRecoveryLoading(false);
     }
@@ -321,6 +343,31 @@ function AppContent() {
       try {
         // Service Worker の登録
         const registration = await navigator.serviceWorker.register('/sw.js');
+
+        // 新しい Service Worker が存在するか確認するハンドラ
+        const handleUpdate = (reg: ServiceWorkerRegistration) => {
+          if (!reg) return;
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  // 新しいSWがインストール完了し、待機状態に入った場合
+                  setWaitingWorker(newWorker);
+                  setShowUpdateBanner(true);
+                }
+              });
+            }
+          });
+
+          // すでにロード時点で待機中の新しいSWが存在する場合
+          if (reg.waiting) {
+            setWaitingWorker(reg.waiting);
+            setShowUpdateBanner(true);
+          }
+        };
+
+        handleUpdate(registration);
 
         // 通知の許可状況を確認し、必要に応じて許可を求める
         if (Notification.permission === 'default') {
@@ -433,7 +480,7 @@ function AppContent() {
             <h2 className="setup-title">{language === 'ja' ? '2段階認証' : 'Two-Factor Authentication'}</h2>
             <p className="setup-subtitle">
               {language === 'ja' 
-                ? '登録されたメールアドレス宛てに送信された6桁の認証コードを入力してください。' 
+                ? '登録されたメールアドレス宛てに送信された6桁 of 認証コードを入力してください。' 
                 : 'Please enter the 6-digit verification code sent to your registered email address.'}
             </p>
 
@@ -588,7 +635,7 @@ function AppContent() {
           <h2 className="setup-title">{t('login.title')}</h2>
           <p className="setup-subtitle">{t('login.subtitle')}</p>
 
-          {loginError && <div className="alert-error">{loginError}</div>}
+          {loginError && <div className="alert-error" style={{ marginBottom: '15px' }}>{loginError}</div>}
 
           <form onSubmit={handleLogin}>
             <div className="form-group">
@@ -603,6 +650,7 @@ function AppContent() {
                 disabled={loginLoading}
               />
             </div>
+
             <div className="form-group">
               <label className="form-label">{t('login.password')}</label>
               <input
@@ -615,8 +663,9 @@ function AppContent() {
                 disabled={loginLoading}
               />
             </div>
-            <button type="submit" className="btn btn-primary" disabled={loginLoading}>
-              {loginLoading ? t('login.loading') : t('login.submit')}
+
+            <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }} disabled={loginLoading}>
+              {loginLoading ? t('login.loading') : t('login.signIn')}
             </button>
           </form>
 
@@ -639,19 +688,136 @@ function AppContent() {
             </button>
           </div>
         </div>
+
+        {showUpdateBanner && (
+          <div style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            background: 'rgba(15, 23, 42, 0.95)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '12px',
+            padding: '16px 20px',
+            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '12px',
+            zIndex: 9999,
+            maxWidth: '320px',
+            color: '#fff',
+            backdropFilter: 'blur(10px)'
+          }}>
+            <div style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '1.4' }}>
+              {language === 'ja' ? '新しいバージョンが利用可能です。' : 'A new version is available.'}
+            </div>
+            <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', lineHeight: '1.4' }}>
+              {language === 'ja' ? 'チャットの安定性を保つため、最新の更新を適用してください。' : 'Please apply the latest updates to keep chat stable.'}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowUpdateBanner(false)}
+                style={{
+                  background: 'rgba(255,255,255,0.05)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '11px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                {language === 'ja' ? '後で' : 'Later'}
+              </button>
+              <button
+                onClick={handleApplyUpdate}
+                style={{
+                  background: 'var(--accent-primary, #4f46e5)',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '11px',
+                  padding: '6px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold'
+                }}
+              >
+                {language === 'ja' ? '今すぐ更新' : 'Update Now'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   // 9. 通常チャット画面の表示
   return (
-    <ChatPage
-      currentUser={session}
-      initialWorkspaceId={session.workspaceId}
-      initialChannelId={session.defaultChannelId}
-      onLogout={handleLogout}
-      onUpdateUser={handleUpdateSession}
-    />
+    <>
+      <ChatPage
+        currentUser={session}
+        initialWorkspaceId={session.workspaceId}
+        initialChannelId={session.defaultChannelId}
+        onLogout={handleLogout}
+        onUpdateUser={handleUpdateSession}
+      />
+      {showUpdateBanner && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          background: 'rgba(15, 23, 42, 0.95)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+          zIndex: 9999,
+          maxWidth: '320px',
+          color: '#fff',
+          backdropFilter: 'blur(10px)'
+        }}>
+          <div style={{ fontSize: '13px', fontWeight: 'bold', lineHeight: '1.4' }}>
+            {language === 'ja' ? '新しいバージョンが利用可能です。' : 'A new version is available.'}
+          </div>
+          <div style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.6)', lineHeight: '1.4' }}>
+            {language === 'ja' ? 'チャットの安定性を保つため、最新の更新を適用してください。' : 'Please apply the latest updates to keep chat stable.'}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setShowUpdateBanner(false)}
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: 'none',
+                color: '#fff',
+                fontSize: '11px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer'
+              }}
+            >
+              {language === 'ja' ? '後で' : 'Later'}
+            </button>
+            <button
+              onClick={handleApplyUpdate}
+              style={{
+                background: 'var(--accent-primary, #4f46e5)',
+                border: 'none',
+                color: '#fff',
+                fontSize: '11px',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              {language === 'ja' ? '今すぐ更新' : 'Update Now'}
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

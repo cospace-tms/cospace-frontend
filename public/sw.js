@@ -63,3 +63,20 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// 新しいSWが有効化された際に即座に制御を開始する
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+// フロントエンドからの更新メッセージを待ち受け、即座に待機状態をスキップする
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+// PWAインストール可能要件を満たすためのダミーのfetchイベントリスナ
+self.addEventListener('fetch', (event) => {
+  // 必要に応じて将来的に静的アセットのキャッシュ戦略などをここに追加可能です
+});
