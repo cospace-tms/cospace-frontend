@@ -480,7 +480,7 @@ function AppContent() {
             <h2 className="setup-title">{language === 'ja' ? '2段階認証' : 'Two-Factor Authentication'}</h2>
             <p className="setup-subtitle">
               {language === 'ja' 
-                ? '登録されたメールアドレス宛てに送信された6桁 of 認証コードを入力してください。' 
+                ? '登録されたメールアドレス宛てに送信された6桁の認証コードを入力してください。' 
                 : 'Please enter the 6-digit verification code sent to your registered email address.'}
             </p>
 
@@ -665,7 +665,7 @@ function AppContent() {
             </div>
 
             <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }} disabled={loginLoading}>
-              {loginLoading ? t('login.loggingIn') : t('login.submit')}
+              {loginLoading ? t('login.loading') : t('login.submit')}
             </button>
           </form>
 
