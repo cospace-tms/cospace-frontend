@@ -117,20 +117,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const replaceMentions = React.useCallback((html: string) => {
     if (!html) return html;
     
-    // @all の置換
+    // @all の置換 (Lookaheadを使用し全角・半角スペース、改行、タグ開始、引用符、または文末にマッチ)
     let result = html;
     const isMeMentionedAll = currentUserRole !== 'guest';
     const allBadgeClass = isMeMentionedAll ? 'mention-badge mention-me' : 'mention-badge';
-    result = result.replace(/@all\b/g, `<span class="${allBadgeClass}">@all</span>`);
+    result = result.replace(/@all(?=[\s\n<"']|$)/g, `<span class="${allBadgeClass}">@all</span>`);
 
-    // 各メンバーの displayName に合致するものを置換
+    // 各メンバーの displayName に合致するものを置換 (Lookaheadを使用することで日本語ユーザー名も正確に判定)
     workspaceMembers.forEach((m: any) => {
       const name = m.displayName || m.email.split('@')[0];
       const isMe = m.userId === currentUserId;
       const badgeClass = isMe ? 'mention-badge mention-me' : 'mention-badge';
       
       const escapedName = name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp(`@${escapedName}\\b`, 'g');
+      const regex = new RegExp(`@${escapedName}(?=[\\s\\n<"']|$)`, 'g');
       result = result.replace(regex, `<span class="${badgeClass}">@${name}</span>`);
     });
 
@@ -517,11 +517,14 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     const selectionStart = e.target.selectionStart;
     const textBeforeCaret = value.substring(0, selectionStart);
     
-    const lastAtIndex = textBeforeCaret.lastIndexOf('@');
+    // 半角@または全角＠の位置を取得
+    const lastAtIndex = Math.max(textBeforeCaret.lastIndexOf('@'), textBeforeCaret.lastIndexOf('＠'));
     if (lastAtIndex !== -1) {
       const textAfterAt = textBeforeCaret.substring(lastAtIndex + 1);
-      const isValidTrigger = lastAtIndex === 0 || /\s/.test(textBeforeCaret[lastAtIndex - 1]);
-      const hasSpaceAfterAt = /\s/.test(textAfterAt);
+      // トリガー文字の前が文頭か、またはスペース（半角/全角スペース）であること
+      const isValidTrigger = lastAtIndex === 0 || /[\s\u3000]/.test(textBeforeCaret[lastAtIndex - 1]);
+      // トリガー文字の後ろにスペース（半角/全角スペース）がないこと
+      const hasSpaceAfterAt = /[\s\u3000]/.test(textAfterAt);
       
       if (isValidTrigger && !hasSpaceAfterAt) {
         setShowMentionSuggest(true);
