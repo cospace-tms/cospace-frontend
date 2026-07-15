@@ -2373,5 +2373,34 @@ body {
   transition: opacity 0.2s ease;
 }
 
+/* ==========================================================================
+   Mention Badges Style
+   ========================================================================== */
+.mention-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(79, 70, 229, 0.15);
+  color: var(--accent-primary, #4f46e5);
+  font-weight: 600;
+  font-size: 0.9em;
+  margin: 0 2px;
+  border: 1px solid rgba(79, 70, 229, 0.25);
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.mention-badge.mention-me {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 0 4px rgba(245, 158, 11, 0.15);
+}
+
+.mention-badge:hover {
+  filter: brightness(1.1);
+  cursor: pointer;
+}
+
 
 

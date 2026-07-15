@@ -113,6 +113,30 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return list.filter(item => item.displayName.toLowerCase().includes(query));
   }, [workspaceMembers, mentionQuery]);
 
+  // メンション文字列をバッジ状のHTMLに置換するヘルパー
+  const replaceMentions = React.useCallback((html: string) => {
+    if (!html) return html;
+    
+    // @all の置換
+    let result = html;
+    const isMeMentionedAll = currentUserRole !== 'guest';
+    const allBadgeClass = isMeMentionedAll ? 'mention-badge mention-me' : 'mention-badge';
+    result = result.replace(/@all\b/g, `<span class="${allBadgeClass}">@all</span>`);
+
+    // 各メンバーの displayName に合致するものを置換
+    workspaceMembers.forEach((m: any) => {
+      const name = m.displayName || m.email.split('@')[0];
+      const isMe = m.userId === currentUserId;
+      const badgeClass = isMe ? 'mention-badge mention-me' : 'mention-badge';
+      
+      const escapedName = name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`@${escapedName}\\b`, 'g');
+      result = result.replace(regex, `<span class="${badgeClass}">@${name}</span>`);
+    });
+
+    return result;
+  }, [workspaceMembers, currentUserId, currentUserRole]);
+
   // サブヘッダーの左側ポータル用 DOM ノード
   const [docSubheaderLeftNode, setDocSubheaderLeftNode] = useState<HTMLDivElement | null>(null);
   const [tasksSubheaderLeftNode, setTasksSubheaderLeftNode] = useState<HTMLDivElement | null>(null);
@@ -1144,7 +1168,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         
                         <div 
                           style={{ fontSize: '12px', wordBreak: 'break-all', color: 'var(--text-primary)', lineHeight: 1.4 }}
-                          dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(pin.content)) }}
+                          dangerouslySetInnerHTML={{ __html: replaceMentions(replaceCustomEmojis(parseMarkdownToHtml(pin.content))) }}
                         />
 
                         {/* 添付ファイルの簡易表示 */}
@@ -1208,7 +1232,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                             title={isEn ? 'Click to jump to the quoted message' : 'クリックして引用元メッセージに移動'}
                           >
                             <span className="reply-quote-sender">@{msg.parentMessage.userDisplayName}</span>
-                            <span className="reply-quote-content" dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(msg.parentMessage.content)) }}></span>
+                            <span className="reply-quote-content" dangerouslySetInnerHTML={{ __html: replaceMentions(replaceCustomEmojis(parseMarkdownToHtml(msg.parentMessage.content))) }}></span>
                           </div>
                         )}
                         
@@ -1216,7 +1240,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         {msg.content && (
                           <div 
                             className={`message-bubble ${msg.status === 'sending' ? 'pending' : ''} markdown-body`}
-                            dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(parseMarkdownToHtml(msg.content)) }}
+                            dangerouslySetInnerHTML={{ __html: replaceMentions(replaceCustomEmojis(parseMarkdownToHtml(msg.content))) }}
                           />
                         )}
 
