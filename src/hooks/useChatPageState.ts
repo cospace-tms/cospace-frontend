@@ -240,16 +240,6 @@ export const useChatPageState = ({
     apiSendMessage,
   });
 
-  const handleSendMessageWithSync = useCallback(async (
-    content: string, 
-    fileUrl?: string | null, 
-    fileName?: string | null, 
-    fileSize?: number | null
-  ) => {
-    await sendMessage(content, null, fileUrl, fileName, fileSize);
-    triggerImmediatePoll();
-  }, [sendMessage, triggerImmediatePoll]);
-
   // 4. メッセージフェッチロジック (ポーリングから呼び出す)
   const lastFetchedIdRef = useRef<string | null>(null);
 
@@ -289,6 +279,16 @@ export const useChatPageState = ({
     onFetch: fetchNewMessages,
   });
   const { triggerImmediatePoll } = pollingInfo;
+
+  const handleSendMessageWithSync = useCallback(async (
+    content: string, 
+    fileUrl?: string | null, 
+    fileName?: string | null, 
+    fileSize?: number | null
+  ) => {
+    await sendMessage(content, null, fileUrl, fileName, fileSize);
+    triggerImmediatePoll();
+  }, [sendMessage, triggerImmediatePoll]);
 
   // チャンネル切り替え時にフェッチの基準となるメッセージIDをリセット
   useEffect(() => {
