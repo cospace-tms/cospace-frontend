@@ -137,6 +137,17 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
       const registration = await navigator.serviceWorker.register('/sw.js');
       
+      // 既存の古い鍵での購読オブジェクトがあれば、一度明示的に解除する
+      try {
+        const activeSub = await registration.pushManager.getSubscription();
+        if (activeSub) {
+          console.log('Unsubscribing from existing push subscription before resubscribing.');
+          await activeSub.unsubscribe();
+        }
+      } catch (subErr) {
+        console.warn('Failed to unsubscribe existing push:', subErr);
+      }
+      
       // VAPID公開鍵の取得
       const { publicKey } = await apiClient.get<{ publicKey: string }>('/api/push/vapid-public-key');
 
