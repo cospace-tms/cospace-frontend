@@ -98,7 +98,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   // メンション候補の構築
   const mentionCandidates = React.useMemo(() => {
-    const allCandidate = { userId: 'all', displayName: 'all', isAll: true };
+    const allCandidate = { userId: 'all', displayName: 'all', isAll: true, avatarUrl: null as string | null };
     const memberCandidates = workspaceMembers.map((m: any) => ({
       userId: m.userId,
       displayName: m.displayName || m.email.split('@')[0],

@@ -246,9 +246,9 @@ export const useChatPageState = ({
     fileName?: string | null, 
     fileSize?: number | null
   ) => {
-    await sendMessage(content, fileUrl, fileName, fileSize);
-    triggerImmediatePoll.current();
-  }, [sendMessage]);
+    await sendMessage(content, null, fileUrl, fileName, fileSize);
+    triggerImmediatePoll();
+  }, [sendMessage, triggerImmediatePoll]);
 
   // 4. メッセージフェッチロジック (ポーリングから呼び出す)
   const lastFetchedIdRef = useRef<string | null>(null);
@@ -662,12 +662,12 @@ export const useChatPageState = ({
 
     try {
       await apiClient.post<{ success: boolean }>(`/api/messages/${messageId}/reactions`, { emoji });
-      triggerImmediatePoll.current();
+      triggerImmediatePoll();
     } catch (err: any) {
       console.error('Failed to toggle reaction:', err);
       toggleLocalReaction(messageId, emoji, chatUser);
     }
-  }, [toggleLocalReaction, chatUser]);
+  }, [toggleLocalReaction, chatUser, triggerImmediatePoll]);
 
   const handleUpdateProfile = async (displayName: string, avatarUrl: string | null, language: string) => {
     const res = await apiClient.put<{ success: boolean }>('/api/users/me', { displayName, avatarUrl, language });
