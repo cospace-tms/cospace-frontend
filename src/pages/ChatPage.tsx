@@ -648,6 +648,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   };
 
+  // アプリ起動時のURL確認（通知クリック等で直接 /channels/xxx などのパスが開かれた場合の初期表示）
+  useEffect(() => {
+    const path = window.location.pathname;
+    const search = window.location.search;
+    const fullPath = path + search;
+    
+    if (fullPath && fullPath !== '/') {
+      // データのロード完了を考慮し、少し遅延させてジャンプ処理を呼び出す
+      setTimeout(() => {
+        handleJumpToLink(fullPath);
+      }, 800);
+    }
+  }, []);
+
   const handleSelectWorkspaceFromDashboard = (workspaceId: string) => {
     setActiveWorkspaceId(workspaceId);
     setActiveView('chat');
