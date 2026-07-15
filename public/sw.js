@@ -34,7 +34,14 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  const linkUrl = event.notification.data?.linkUrl || '/';
+  let linkUrl = event.notification.data?.linkUrl || '/';
+  
+  // 相対パスの場合は、明示的にService Workerのoriginを付与して絶対URL化（予期せぬAPIドメイン等への遷移を完全防止）
+  if (linkUrl.startsWith('/')) {
+    linkUrl = new URL(linkUrl, self.location.origin).toString();
+  }
+
+  console.log('[ServiceWorker] Notification clicked. Opening URL:', linkUrl);
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
