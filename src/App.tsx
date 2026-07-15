@@ -665,7 +665,7 @@ function AppContent() {
             </div>
 
             <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px' }} disabled={loginLoading}>
-              {loginLoading ? t('login.loading') : t('login.signIn')}
+              {loginLoading ? t('login.loggingIn') : t('login.submit')}
             </button>
           </form>
 
