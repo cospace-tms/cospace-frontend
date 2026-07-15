@@ -211,6 +211,42 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
+  // 登録されている全プッシュ購読をリセット
+  const handleResetPush = async () => {
+    if (!window.confirm('すべての登録デバイスのプッシュ通知設定をリセットしますか？\n（リセット後、通知を受け取る各デバイスで再度「通知を有効にする」を押す必要があります）')) {
+      return;
+    }
+    
+    setPushLoading(true);
+    setPushMessage(null);
+
+    try {
+      // 1. ブラウザの購読オブジェクトを取得して解除（もし存在すれば）
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        const registration = await navigator.serviceWorker.ready;
+        const subscription = await registration.pushManager.getSubscription();
+        if (subscription) {
+          await subscription.unsubscribe();
+        }
+      }
+      
+      // 2. バックエンドへリセット要求
+      const res = await apiClient.post<{ success: boolean; error?: string }>('/api/push/unsubscribe-all', {});
+      if (res.success) {
+        setHasSubscription(false);
+        setPushStatus(Notification.permission);
+        setPushMessage({ text: '登録デバイスのプッシュ通知設定をすべてリセットしました。', type: 'success' });
+      } else {
+        throw new Error(res.error || 'リセットに失敗しました。');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setPushMessage({ text: err.message || 'リセットに失敗しました。', type: 'error' });
+    } finally {
+      setPushLoading(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -716,6 +752,27 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 {t('error') === 'Error' ? 'Send Test Push' : 'テスト通知を送信'}
               </button>
             </div>
+
+            {hasSubscription && (
+              <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                <button
+                  type="button"
+                  onClick={handleResetPush}
+                  disabled={pushLoading}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#ef4444',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    padding: 0,
+                    textDecoration: 'underline'
+                  }}
+                >
+                  {t('error') === 'Error' ? 'Reset All Devices Subscription' : '登録デバイスのリセット（すべて解除）'}
+                </button>
+              </div>
+            )}
             {pushStatus === 'denied' && (
               <p style={{ fontSize: '11px', color: '#ef4444', marginTop: '6px', lineHeight: '1.4' }}>
                 ※通知許可がブロックされています。ブラウザの設定から通知の許可を変更してください。
