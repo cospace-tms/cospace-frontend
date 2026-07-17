@@ -58,6 +58,16 @@ interface WorkspaceMembersModalProps {
   initialTab?: string;
   memberLimitReached?: boolean;
   memberLimitMessage?: string;
+  subscription?: {
+    plan: string;
+    storageLimit: number;
+    storageUsed: number;
+    memberLimit: number;
+    memberUsed: number;
+    channelLimit: number;
+    channelUsed: number;
+  } | null;
+  fetchSubscription?: (wsId: string) => Promise<void>;
 }
 
 export interface ExtraTab {
@@ -82,6 +92,8 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
   initialTab = 'members',
   memberLimitReached = false,
   memberLimitMessage,
+  subscription,
+  fetchSubscription,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';

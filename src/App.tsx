@@ -51,8 +51,21 @@ function AppContent({ saas }: AppProps) {
   const isSaasMode = saas?.isSaasMode ?? false;
   const isAdminPortalMode = saas?.isAdminPortalMode ?? false;
   const currentAdminPath = saas?.currentAdminPath ?? '';
-  const adminSetupRequired = saas?.adminSetupRequired ?? false;
-  const isWorkspaceSuspended = saas?.isWorkspaceSuspended ?? false;
+  const [adminSetupRequired, setAdminSetupRequired] = useState<boolean>(saas?.adminSetupRequired ?? false);
+  const [isWorkspaceSuspended, setIsWorkspaceSuspended] = useState<boolean>(saas?.isWorkspaceSuspended ?? false);
+
+  // Propsの変更を同期する
+  useEffect(() => {
+    if (saas?.adminSetupRequired !== undefined) {
+      setAdminSetupRequired(saas.adminSetupRequired);
+    }
+  }, [saas?.adminSetupRequired]);
+
+  useEffect(() => {
+    if (saas?.isWorkspaceSuspended !== undefined) {
+      setIsWorkspaceSuspended(saas.isWorkspaceSuspended);
+    }
+  }, [saas?.isWorkspaceSuspended]);
 
   // 新規登録 (サインアップ) 用の状態
   const [showRegister, setShowRegister] = useState(false);
@@ -647,7 +660,7 @@ function AppContent({ saas }: AppProps) {
   }, [session]);
 
   // SaaS管理者ポータルのレンダリング分岐
-  if (isAdminPortalMode === null || loading) {
+  if (loading) {
     return (
       <div className="setup-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main, #0f172a)' }}>
         <Loader className="animate-spin" size={32} style={{ color: 'var(--accent-primary, #0ea5e9)' }} />
