@@ -2561,49 +2561,44 @@ body {
 
 /* WCOが有効な環境（PWAインストール後）のみ適用 */
 @media (display-mode: window-controls-overlay) {
-  /* WCO専用のタイトルバーヘッダー */
-  .wco-titlebar {
+  /* Sidebar自体を最上部まで伸ばし、パディングでロゴ部分を下げる */
+  .sidebar {
+    padding-top: env(titlebar-area-height, 40px) !important;
+  }
+
+  .sidebar .channel-column {
+    padding-top: 0 !important;
+  }
+
+  /* macOS対応：左上のコントロールボタンと重ならないように、ロゴ・開閉トグルボタンを右にずらす */
+  .sidebar .channel-column > div:first-child {
+    padding-left: max(16px, env(titlebar-area-x, 0px)) !important;
+    padding-right: 16px !important;
+    height: 40px;
     display: flex;
     align-items: center;
-    position: fixed;
-    top: 0;
-    /* OSごとのコントロールボタンを避けた安全なX座標と幅を自動適用 */
-    left: env(titlebar-area-x, 0px);
-    width: env(titlebar-area-width, 100%);
-    height: env(titlebar-area-height, 40px);
-    
-    /* ウィンドウをドラッグして移動できるようにする */
-    -webkit-app-region: drag; 
-    z-index: 9999;
-    padding: 0 16px;
-    
-    /* 背景をテーマのサイドバー色と同期（透明にする場合は透明＋グラスモーフィズム等も可） */
-    background-color: var(--bg-sidebar); 
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: none !important;
+    margin-bottom: 8px !important;
+    /* このロゴ・トグルエリアをドラッグ可能にする */
+    -webkit-app-region: drag;
+  }
+
+  /* ロゴエリア内のボタン等のクリック・選択動作を有効化する（ドラッグ不可に設定） */
+  .sidebar .channel-column > div:first-child * {
+    -webkit-app-region: no-drag;
+  }
+
+  /* 共通ヘッダーも最上部まで引き伸ばす */
+  .chat-header {
+    padding-top: env(titlebar-area-height, 40px) !important;
+    height: calc(64px + env(titlebar-area-height, 40px)) !important;
     box-sizing: border-box;
+    /* ヘッダー全体をドラッグ可能にする */
+    -webkit-app-region: drag;
   }
 
-  .wco-titlebar .app-name {
-    font-size: 14px;
-    font-weight: bold;
-    color: var(--text-primary);
-    letter-spacing: 0.5px;
-    /* テキスト選択やダブルクリック（最大化）を正しく動作させるためドラッグ不可にする */
-    -webkit-app-region: no-drag; 
+  /* ヘッダー内の各種操作ボタンやテキストはクリック・選択を可能にするためドラッグ不可にする */
+  .chat-header * {
+    -webkit-app-region: no-drag;
   }
-
-  /* アプリ全体の最上部にタイトルバーの高さ分の余白を追加し、コンテンツが被るのを防ぐ */
-  .app-container {
-    padding-top: env(titlebar-area-height, 40px);
-  }
-
-  /* 既存のSidebar内の最上部ロゴ部分はWCOヘッダーと被るため非表示に調整 */
-  .sidebar .channel-column > div:first-child {
-    display: none !important;
-  }
-}
-
-/* 通常のブラウザ環境ではWCOヘッダーを非表示にする */
-.wco-titlebar {
-  display: none;
 }
