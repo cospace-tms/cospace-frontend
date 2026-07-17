@@ -97,6 +97,26 @@ export const useChatPageState = ({
     return 'dashboard';
   });
 
+  // サブスクリプション制限情報ステート
+  const [subscription, setSubscription] = useState<{
+    plan: string;
+    storageLimit: number;
+    storageUsed: number;
+    memberLimit: number;
+    memberUsed: number;
+    channelLimit: number;
+    channelUsed: number;
+  } | null>(null);
+
+  const fetchSubscription = useCallback(async (wsId: string) => {
+    try {
+      const sub = await apiClient.getWorkspaceSubscription(wsId);
+      setSubscription(sub);
+    } catch (err) {
+      console.error("Failed to fetch subscription status:", err);
+    }
+  }, []);
+
   // ダッシュボード用ステート
   const [dashboardTasks, setDashboardTasks] = useState<any[]>([]);
   const [dashboardActivities, setDashboardActivities] = useState<any[]>([]);
@@ -361,6 +381,7 @@ export const useChatPageState = ({
     if (!activeWorkspaceId) return;
 
     const loadChannelsAndMembers = async () => {
+      fetchSubscription(activeWorkspaceId);
       try {
         const chanResponse = await apiClient.get<{ success: boolean; data: Channel[] }>(
           `/api/workspaces/${activeWorkspaceId}/channels`,
@@ -652,10 +673,11 @@ export const useChatPageState = ({
     if (response.success && response.data) {
       setChannels(prev => [...prev, response.data]);
       setActiveChannelId(response.data.id);
+      fetchSubscription(activeWorkspaceId);
     } else {
       throw new Error('Failed to create channel');
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, fetchSubscription]);
 
   const handleToggleReaction = useCallback(async (messageId: string, emoji: string) => {
     toggleLocalReaction(messageId, emoji, chatUser);
@@ -865,5 +887,7 @@ export const useChatPageState = ({
     activeWorkspace,
     activeChannel,
     loadNotifications,
+    subscription,
+    fetchSubscription,
   };
 };

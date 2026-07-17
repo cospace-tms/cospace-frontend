@@ -163,7 +163,7 @@ export class ApiClient {
     }
 
     const token = this.getToken();
-    if (token) {
+    if (token && !requestHeaders.has("Authorization")) {
       requestHeaders.set("Authorization", `Bearer ${token}`);
     }
 
@@ -181,7 +181,8 @@ export class ApiClient {
         response.status === 401 &&
         endpoint !== "/api/auth/refresh" &&
         endpoint !== "/api/auth/login" &&
-        endpoint !== "/api/auth/recovery"
+        endpoint !== "/api/auth/recovery" &&
+        !endpoint.startsWith("/api/admin/")
       ) {
         if (!this.isRefreshing) {
           this.isRefreshing = true;
@@ -228,6 +229,11 @@ export class ApiClient {
 
       // エラー時のハンドリング
       if (!response.ok) {
+        if (response.status === 403 && responseData?.error && (responseData.error.includes("suspended") || responseData.error.includes("suspended"))) {
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("workspace:suspended"));
+          }
+        }
         throw new ApiError(
           responseData?.error || `API request failed with status ${response.status}`,
           response.status,
@@ -279,6 +285,33 @@ export class ApiClient {
       body: body ? JSON.stringify(body) : undefined,
       ...options,
     });
+  }
+
+  /**
+   * ワークスペースのプランと制限情報（サブスクリプション）を取得します。
+   */
+  async getWorkspaceSubscription(workspaceId: string): Promise<{
+    plan: string;
+    storageLimit: number;
+    storageUsed: number;
+    memberLimit: number;
+    memberUsed: number;
+    channelLimit: number;
+    channelUsed: number;
+  }> {
+    const response = await this.get<{
+      success: boolean;
+      data: {
+        plan: string;
+        storageLimit: number;
+        storageUsed: number;
+        memberLimit: number;
+        memberUsed: number;
+        channelLimit: number;
+        channelUsed: number;
+      };
+    }>(`/api/workspaces/${workspaceId}/subscription`);
+    return response.data;
   }
 }
 

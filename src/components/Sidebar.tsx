@@ -39,7 +39,7 @@ interface SidebarProps {
   currentUserLedGroups: string[];
   onLogout?: () => void;
   onOpenUserProfile?: () => void;
-  onOpenWorkspaceMembers?: () => void;
+  onOpenWorkspaceMembers?: (initialTab?: 'members' | 'groups' | 'statuses' | 'smtp' | 'subscription') => void;
   onOpenChannelSettings?: (channel: Channel) => void;
   onOpenCreateWorkspace?: () => void;
   onOpenCreateChannel?: () => void;
@@ -48,6 +48,15 @@ interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
   onToggleStarChannel?: (channelId: string, currentStarred: boolean) => Promise<void>;
+  subscription?: {
+    plan: string;
+    storageLimit: number;
+    storageUsed: number;
+    memberLimit: number;
+    memberUsed: number;
+    channelLimit: number;
+    channelUsed: number;
+  } | null;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -75,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   setIsCollapsed,
   onToggleStarChannel,
+  subscription,
 }) => {
   const { t } = useLanguage();
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
@@ -233,9 +243,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {!isCollapsed ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  {t('error') === 'Error' ? 'Workspaces' : 'ワークスペース'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    {t('error') === 'Error' ? 'Workspaces' : 'ワークスペース'}
+                  </span>
+                  {subscription && subscription.plan !== 'unlimited' && (
+                    <span 
+                      onClick={() => onOpenWorkspaceMembers?.('subscription')}
+                      style={{
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        padding: '2px 6px',
+                        borderRadius: '10px',
+                        background: 'rgba(14, 165, 233, 0.15)',
+                        color: 'var(--accent-primary, #0ea5e9)',
+                        border: '1px solid rgba(14, 165, 233, 0.3)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                      }}
+                      title="プランと制限を確認"
+                    >
+                      無料プラン
+                    </span>
+                  )}
+                </div>
                 {currentUserRole !== 'guest' && (
                   <button
                     className="input-icon-btn"

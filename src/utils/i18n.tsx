@@ -28,6 +28,29 @@ export const translations = {
     "login.submit": "ログイン",
     "login.loading": "ログイン中...",
     "login.forgotPassword": "パスワードを忘れた場合",
+    "login.goToRegister": "新規アカウント登録（サインアップ）はこちら",
+
+    // 新規登録 / Signup
+    "register.title": "cohive アカウント登録",
+    "register.subtitle": "メールアドレスとパスワードでアカウントを作成します。",
+    "register.displayName": "表示名 (Display Name)",
+    "register.email": "メールアドレス",
+    "register.password": "パスワード",
+    "register.submit": "アカウントを登録する",
+    "register.loading": "登録中...",
+    "register.backToLogin": "すでにアカウントをお持ちですか？ ログインはこちら",
+    "register.recoveryTitle": "⚠️ リカバリーコードの保存",
+    "register.recoverySubtitle": "パスワードを忘れた場合にアカウントを復旧するための唯一のコードです。安全な場所に保存してください。",
+    "register.startApp": "コードを保存しました - ログイン画面へ進む",
+
+    // ワークスペース選択 / Workspace Select
+    "workspace.select.title": "ワークスペースの選択",
+    "workspace.select.subtitle": "参加するワークスペースを選択するか、新しく作成してください。",
+    "workspace.select.createTitle": "新しいワークスペースを作成",
+    "workspace.select.createPlaceholder": "例：開発チーム、サークル活動など",
+    "workspace.select.createBtn": "作成して開始",
+    "workspace.select.empty": "所属しているワークスペースがありません。",
+    "workspace.select.submit": "選択したワークスペースに入る",
 
     // パスワード再設定 / Password Recovery
     "recovery.title": "パスワードの再設定",
@@ -167,6 +190,29 @@ export const translations = {
     "login.submit": "Login",
     "login.loading": "Logging in...",
     "login.forgotPassword": "Forgot your password?",
+    "login.goToRegister": "Need an account? Sign up here",
+
+    // 新規登録 / Signup
+    "register.title": "cohive Sign Up",
+    "register.subtitle": "Create your account with email and password.",
+    "register.displayName": "Display Name",
+    "register.email": "Email Address",
+    "register.password": "Password",
+    "register.submit": "Create Account",
+    "register.loading": "Registering...",
+    "register.backToLogin": "Already have an account? Log in here",
+    "register.recoveryTitle": "⚠️ Save Recovery Code",
+    "register.recoverySubtitle": "This is the only code to recover your account if you forget the password. Please save it securely.",
+    "register.startApp": "Saved the code - Go to login",
+
+    // ワークスペース選択 / Workspace Select
+    "workspace.select.title": "Select Workspace",
+    "workspace.select.subtitle": "Please select a workspace to join, or create a new one.",
+    "workspace.select.createTitle": "Create New Workspace",
+    "workspace.select.createPlaceholder": "e.g., Development Team, Family",
+    "workspace.select.createBtn": "Create & Start",
+    "workspace.select.empty": "You do not belong to any workspaces.",
+    "workspace.select.submit": "Enter Selected Workspace",
 
     // パスワード再設定 / Password Recovery
     "recovery.title": "Reset Password",

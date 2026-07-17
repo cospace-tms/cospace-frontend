@@ -53,6 +53,15 @@ interface ChatAreaProps {
   clearTargetScrollMessageId?: () => void;
   onJumpToMessage?: (channelId: string, messageId: string) => void;
   onSearchClick?: () => void;
+  subscription?: {
+    plan: string;
+    storageLimit: number;
+    storageUsed: number;
+    memberLimit: number;
+    memberUsed: number;
+    channelLimit: number;
+    channelUsed: number;
+  } | null;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -83,6 +92,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   clearTargetScrollMessageId,
   onJumpToMessage,
   onSearchClick,
+  subscription,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
@@ -1651,6 +1661,29 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                   >
                     <X size={16} />
                   </button>
+                </div>
+              )}
+              {/* 無料プランのメッセージ履歴自動削除に関する警告バナー */}
+              {subscription && subscription.plan === 'free' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 16px',
+                  background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(14, 165, 233, 0.08) 100%)',
+                  border: '1px solid rgba(14, 165, 233, 0.25)',
+                  borderRadius: '8px',
+                  marginBottom: '10px',
+                  fontSize: '12px',
+                  color: 'var(--text-muted, #9ca3af)',
+                  lineHeight: '1.4'
+                }}>
+                  <AlertCircle size={14} style={{ color: 'var(--accent-primary, #0ea5e9)', flexShrink: 0 }} />
+                  <span>
+                    {isEn
+                      ? "Free Plan: Only the latest 1,000 messages (50 in development) are kept per channel. Older messages will be auto-deleted."
+                      : "無料プラン制限: 各チャンネル最新 1,000 件（開発環境は50件）のメッセージのみ保持されます。超過した古いメッセージは順次自動削除されます。"}
+                  </span>
                 </div>
               )}
               <form onSubmit={handleSend} className={`chat-input-wrapper ${replyTargetMessage ? 'has-reply-preview' : ''}`}>

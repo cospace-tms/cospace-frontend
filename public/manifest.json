@@ -18,5 +18,8 @@
   "background_color": "#0f172a",
   "theme_color": "#4f46e5",
   "display": "standalone",
+  "display_override": [
+    "window-controls-overlay"
+  ],
   "orientation": "portrait"
 }

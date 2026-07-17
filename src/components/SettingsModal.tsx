@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Briefcase, Hash, Trash2, Upload, Loader } from 'lucide-react';
+import { X, User, Briefcase, Hash, Trash2, Upload, Loader, CreditCard } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 
 interface SettingsModalProps {
@@ -24,6 +24,15 @@ interface SettingsModalProps {
   onDeleteWorkspace: () => Promise<void>;
   onUpdateChannel: (name: string, description: string) => Promise<void>;
   onDeleteChannel: () => Promise<void>;
+  subscription?: {
+    plan: string;
+    storageLimit: number;
+    storageUsed: number;
+    memberLimit: number;
+    memberUsed: number;
+    channelLimit: number;
+    channelUsed: number;
+  } | null;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -37,8 +46,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onDeleteWorkspace,
   onUpdateChannel,
   onDeleteChannel,
+  subscription,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'workspace' | 'channel'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'workspace' | 'channel' | 'subscription'>('profile');
   
   // プロフィール編集ステート
   const [displayName, setDisplayName] = useState(currentUser.displayName);
@@ -175,6 +185,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Hash size={16} />
             <span>チャンネル</span>
           </button>
+          {subscription && subscription.plan !== 'unlimited' && (
+            <button 
+              className={`tab-btn ${activeTab === 'subscription' ? 'active' : ''}`}
+              onClick={() => setActiveTab('subscription')}
+            >
+              <CreditCard size={16} />
+              <span>プラン & 制限</span>
+            </button>
+          )}
         </div>
 
         {/* 設定フォーム本体 */}
@@ -274,6 +293,74 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <Trash2 size={16} />
                   <span>チャンネルを削除する</span>
                 </button>
+              </div>
+            </div>
+          )}
+          {activeTab === 'subscription' && subscription && (
+            <div className="subscription-tab-content">
+              <div className="plan-badge-container">
+                <span className="plan-label">現在のプラン:</span>
+                <span className="plan-badge free-badge">無料プラン</span>
+              </div>
+              <p className="plan-description">
+                現在は無料枠の制限が適用されています。将来的には有料プランに切り替えることで、制限のない高度な機能をご利用いただけるようになります。
+              </p>
+
+              <div className="limit-metrics">
+                {/* チャンネル制限 */}
+                <div className="metric-card">
+                  <div className="metric-header">
+                    <span className="metric-name">チャンネル数</span>
+                    <span className="metric-value">{subscription.channelUsed} / {subscription.channelLimit}</span>
+                  </div>
+                  <div className="progress-bg">
+                    <div 
+                      className={`progress-fill ${subscription.channelUsed >= subscription.channelLimit ? 'danger' : subscription.channelUsed >= subscription.channelLimit * 0.8 ? 'warning' : 'normal'}`} 
+                      style={{ width: `${Math.min(100, (subscription.channelUsed / subscription.channelLimit) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="metric-help">DMを除いたパブリック/プライベートチャンネルが対象です。</span>
+                </div>
+
+                {/* メンバー制限 */}
+                <div className="metric-card">
+                  <div className="metric-header">
+                    <span className="metric-name">メンバー数</span>
+                    <span className="metric-value">{subscription.memberUsed} / {subscription.memberLimit}</span>
+                  </div>
+                  <div className="progress-bg">
+                    <div 
+                      className={`progress-fill ${subscription.memberUsed >= subscription.memberLimit ? 'danger' : subscription.memberUsed >= subscription.memberLimit * 0.8 ? 'warning' : 'normal'}`} 
+                      style={{ width: `${Math.min(100, (subscription.memberUsed / subscription.memberLimit) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="metric-help">このワークスペースに参加できるメンバーの最大数です。</span>
+                </div>
+
+                {/* ストレージ制限 */}
+                <div className="metric-card">
+                  <div className="metric-header">
+                    <span className="metric-name">ストレージ使用量</span>
+                    <span className="metric-value">
+                      {(subscription.storageUsed / (1024 * 1024)).toFixed(2)} MB / {(subscription.storageLimit / (1024 * 1024)).toFixed(0)} MB
+                    </span>
+                  </div>
+                  <div className="progress-bg">
+                    <div 
+                      className={`progress-fill ${subscription.storageUsed >= subscription.storageLimit ? 'danger' : subscription.storageUsed >= subscription.storageLimit * 0.8 ? 'warning' : 'normal'}`} 
+                      style={{ width: `${Math.min(100, (subscription.storageUsed / subscription.storageLimit) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="metric-help">アップロードされたファイルの合計サイズです。</span>
+                </div>
+              </div>
+
+              {/* 将来のアップグレードエリア */}
+              <div className="upgrade-card-premium">
+                <div className="glow-effect"></div>
+                <h4>Premium プラン（近日登場）</h4>
+                <p>無制限のチャンネル、無制限のメンバー、1TBの大容量ストレージ、および高度なセキュリティ機能をご利用いただけるようになる予定です。どうぞご期待ください！</p>
+                <button className="upgrade-btn-coming" disabled>アップグレードを予約する</button>
               </div>
             </div>
           )}

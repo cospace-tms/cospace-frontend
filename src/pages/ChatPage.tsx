@@ -17,6 +17,7 @@ import { useChat, Message, User } from '../hooks/useChat';
 import { SearchView } from '../components/SearchView';
 import { usePolling } from '../hooks/usePolling';
 import { apiClient } from '../utils/apiClient';
+import { SaasExtensions } from '../App';
 
 import { useLanguage } from '../utils/i18n';
 
@@ -32,6 +33,7 @@ interface ChatPageProps {
   initialChannelId: string;
   onLogout: () => void;
   onUpdateUser: (displayName: string, avatarUrl: string | null, language: string, email?: string) => void;
+  saas?: SaasExtensions;
 }
 
 interface Channel {
@@ -58,6 +60,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   initialChannelId,
   onLogout,
   onUpdateUser,
+  saas,
 }) => {
   const { t } = useLanguage();
 
@@ -97,6 +100,32 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   });
 
   // ダッシュボード用ステートと取得関数
+  // サブスクリプション制限情報ステート
+  const [subscription, setSubscription] = useState<{
+    plan: string;
+    storageLimit: number;
+    storageUsed: number;
+    memberLimit: number;
+    memberUsed: number;
+    channelLimit: number;
+    channelUsed: number;
+  } | null>(null);
+
+  const fetchSubscription = useCallback(async (wsId: string) => {
+    try {
+      const sub = await apiClient.getWorkspaceSubscription(wsId);
+      setSubscription(sub);
+    } catch (err) {
+      console.error("Failed to fetch subscription status:", err);
+    }
+  }, []);
+
+  const [workspaceSettingsInitialTab, setWorkspaceSettingsInitialTab] = useState<'members' | 'groups' | 'statuses' | 'smtp' | 'subscription'>('members');
+
+  const [limitModalOpen, setLimitModalOpen] = useState(false);
+  const [limitModalType, setLimitModalType] = useState<'channel' | 'workspace' | 'member' | 'storage' | null>(null);
+  const [limitModalValue, setLimitModalValue] = useState<number | string | undefined>(undefined);
+
   const [dashboardTasks, setDashboardTasks] = useState<DashboardTask[]>([]);
   const [dashboardActivities, setDashboardActivities] = useState<DashboardActivity[]>([]);
   const [loadingDashboard, setLoadingDashboard] = useState<boolean>(false);
@@ -383,6 +412,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     fetchCustomEmojis(activeWorkspaceId);
 
     const loadChannelsAndMembers = async () => {
+      fetchSubscription(activeWorkspaceId);
       try {
         const chanResponse = await apiClient.get<{ success: boolean; data: Channel[] }>(
           `/api/workspaces/${activeWorkspaceId}/channels`,
@@ -691,10 +721,11 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     if (response.success && response.data) {
       setChannels(prev => [...prev, response.data]);
       setActiveChannelId(response.data.id);
+      fetchSubscription(activeWorkspaceId);
     } else {
       throw new Error('Failed to create channel');
     }
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, fetchSubscription]);
 
   // 絵文字リアクションのトグル処理
   const handleToggleReaction = useCallback(async (messageId: string, emoji: string) => {
@@ -837,16 +868,17 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         `/api/channels/${channelId}/members`,
         { userId: currentUser.id }
       );
-      if (res.success) {
-        const chanResponse = await apiClient.get<{ success: boolean; data: Channel[] }>(
-          `/api/workspaces/${activeWorkspaceId}/channels`
-        );
-        if (chanResponse.success && Array.isArray(chanResponse.data)) {
-          setChannels(chanResponse.data);
-          setActiveChannelId(channelId);
-          fetchChannelMembers(channelId);
+        if (res.success) {
+          const chanResponse = await apiClient.get<{ success: boolean; data: Channel[] }>(
+            `/api/workspaces/${activeWorkspaceId}/channels`
+          );
+          if (chanResponse.success && Array.isArray(chanResponse.data)) {
+            setChannels(chanResponse.data);
+            setActiveChannelId(channelId);
+            fetchChannelMembers(channelId);
+            fetchSubscription(activeWorkspaceId);
+          }
         }
-      }
     } catch (err: any) {
       alert((t('error') === 'Error' ? 'Failed to join channel: ' : 'チャンネルへの参加に失敗しました: ') + (err.message || err));
     }
@@ -872,9 +904,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             setActiveChannelId(id);
           }}
           activeView={activeView}
-          setActiveView={(view) => {
-            setActiveView(view);
-          }}
+          setActiveView={setActiveView}
           unreadNotificationsCount={unreadNotificationsCount}
           channelUnreads={channelUnreads}
           currentUser={currentUser}
@@ -882,17 +912,38 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           currentUserLedGroups={currentUserLedGroups}
           onLogout={onLogout}
           onOpenUserProfile={() => setIsProfileOpen(true)}
-          onOpenWorkspaceMembers={() => {
+          onOpenWorkspaceMembers={(initialTab = 'members') => {
+            setWorkspaceSettingsInitialTab(initialTab);
             setActiveView('workspace_settings');
             setActiveChannelId(null);
           }}
           onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
-          onOpenCreateWorkspace={() => setIsCreateWorkspaceOpen(true)}
-          onOpenCreateChannel={() => setIsCreateChannelOpen(true)}
+          onOpenCreateWorkspace={() => {
+            if (saas?.checkWorkspaceLimit) {
+              const limit = saas.checkWorkspaceLimit(workspaces.length);
+              if (limit?.limitReached) {
+                setLimitModalType('workspace');
+                setLimitModalValue(3);
+                setLimitModalOpen(true);
+                return;
+              }
+            }
+            setIsCreateWorkspaceOpen(true);
+          }}
+          onOpenCreateChannel={() => {
+            if (subscription && subscription.plan === 'free' && subscription.channelUsed >= subscription.channelLimit) {
+              setLimitModalType('channel');
+              setLimitModalValue(subscription.channelLimit);
+              setLimitModalOpen(true);
+            } else {
+              setIsCreateChannelOpen(true);
+            }
+          }}
           onOpenBrowseChannels={() => setIsBrowseChannelsOpen(true)}
           onOpenStartDm={() => setIsStartDmOpen(true)}
           isCollapsed={isCollapsed}
           setIsCollapsed={setIsCollapsed}
+          subscription={subscription}
         />
 
         {/* モバイルでメニュー展開時のオーバーレイ背景（タップで縮小表示に戻る） */}
@@ -933,6 +984,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               onUpdateWorkspace={handleUpdateWorkspace}
               onDeleteWorkspace={handleDeleteWorkspace}
               isEmbed={true}
+              subscription={subscription}
+              fetchSubscription={fetchSubscription}
+              initialTab={workspaceSettingsInitialTab}
             />
           </div>
         ) : activeView === 'items' ? (
@@ -992,6 +1046,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             workspaceId={activeWorkspaceId}
             activeChannelId={activeChannelId}
             channels={channels}
+            subscription={subscription}
             onSendMessage={async (content, fileUrl, fileName, fileSize) => {
               await sendMessage(content, replyTargetMessage?.id, fileUrl, fileName, fileSize);
               setReplyTargetMessage(null);
@@ -1081,6 +1136,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         onJoinChannel={handleJoinChannel}
         onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
       />
+
+      {/* SaaS制限警告モーダル */}
+      {saas?.saasLimitModal ? (
+        <saas.saasLimitModal
+          isOpen={limitModalOpen}
+          onClose={() => setLimitModalOpen(false)}
+          limitType={limitModalType}
+          limitValue={limitModalValue}
+          onGoToSubscription={() => {
+            setWorkspaceSettingsInitialTab('subscription');
+            setActiveView('workspace_settings');
+            setActiveChannelId(null);
+          }}
+        />
+      ) : null}
     </>
   );
 };
