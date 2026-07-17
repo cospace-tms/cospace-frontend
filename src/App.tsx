@@ -566,7 +566,7 @@ function AppContent({ saas }: AppProps) {
 
   // プッシュ通知の購読セットアップ
   useEffect(() => {
-    if (!session) return;
+    if (loading || !session || isAdminPortalMode) return;
 
     const setupPushNotifications = async () => {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
