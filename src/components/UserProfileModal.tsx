@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Upload, Loader } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
+import { updateThemeColorMeta } from '../utils/theme';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -617,6 +618,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   setTheme(val);
                   localStorage.setItem('cohive_theme', val);
                   document.documentElement.classList.toggle('theme-light', val === 'light');
+                  updateThemeColorMeta(val);
                 }}
                 className="form-input"
               >

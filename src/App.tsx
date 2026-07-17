@@ -5,6 +5,7 @@ import { apiClient } from './utils/apiClient';
 import { LanguageProvider, useLanguage } from './utils/i18n';
 import { Loader, AlertTriangle } from 'lucide-react';
 import './global.css';
+import { updateThemeColorMeta } from './utils/theme';
 
 export interface SaasExtensions {
   isSaasMode?: boolean;
@@ -134,6 +135,7 @@ function AppContent({ saas }: AppProps) {
         // テーマの初期適用
         const cachedTheme = localStorage.getItem('cohive_theme') || 'dark';
         document.documentElement.classList.toggle('theme-light', cachedTheme === 'light');
+        updateThemeColorMeta(cachedTheme === 'light' ? 'light' : 'dark');
 
         // サイレントリフレッシュによりアクセストークンを再取得してログイン状態を復元
         try {

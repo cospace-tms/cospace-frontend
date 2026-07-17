@@ -889,6 +889,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   return (
     <>
+      <div className="wco-titlebar">
+        <span className="app-name">cohive</span>
+      </div>
       <div className="app-container">
         {/* 左サイドバー */}
         <Sidebar

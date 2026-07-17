@@ -2554,3 +2554,56 @@ body {
 .upgrade-btn-coming:hover {
   background: rgba(168, 85, 247, 0.2);
 }
+
+/* ==========================================================================
+   Window Controls Overlay (WCO) 対応
+   ========================================================================== */
+
+/* WCOが有効な環境（PWAインストール後）のみ適用 */
+@media (display-mode: window-controls-overlay) {
+  /* WCO専用のタイトルバーヘッダー */
+  .wco-titlebar {
+    display: flex;
+    align-items: center;
+    position: fixed;
+    top: 0;
+    /* OSごとのコントロールボタンを避けた安全なX座標と幅を自動適用 */
+    left: env(titlebar-area-x, 0px);
+    width: env(titlebar-area-width, 100%);
+    height: env(titlebar-area-height, 40px);
+    
+    /* ウィンドウをドラッグして移動できるようにする */
+    -webkit-app-region: drag; 
+    z-index: 9999;
+    padding: 0 16px;
+    
+    /* 背景をテーマのサイドバー色と同期（透明にする場合は透明＋グラスモーフィズム等も可） */
+    background-color: var(--bg-sidebar); 
+    border-bottom: 1px solid var(--border-light);
+    box-sizing: border-box;
+  }
+
+  .wco-titlebar .app-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--text-primary);
+    letter-spacing: 0.5px;
+    /* テキスト選択やダブルクリック（最大化）を正しく動作させるためドラッグ不可にする */
+    -webkit-app-region: no-drag; 
+  }
+
+  /* アプリ全体の最上部にタイトルバーの高さ分の余白を追加し、コンテンツが被るのを防ぐ */
+  .app-container {
+    padding-top: env(titlebar-area-height, 40px);
+  }
+
+  /* 既存のSidebar内の最上部ロゴ部分はWCOヘッダーと被るため非表示に調整 */
+  .sidebar .channel-column > div:first-child {
+    display: none !important;
+  }
+}
+
+/* 通常のブラウザ環境ではWCOヘッダーを非表示にする */
+.wco-titlebar {
+  display: none;
+}
