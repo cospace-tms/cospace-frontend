@@ -179,7 +179,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
   const [isBrowseChannelsOpen, setIsBrowseChannelsOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return window.innerWidth <= 768;
+  });
 
   // 全文検索で指定メッセージへジャンプするためのステート
   const [targetScrollMessageId, setTargetScrollMessageId] = useState<string | null>(null);
