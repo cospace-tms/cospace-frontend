@@ -564,18 +564,16 @@ function AppContent({ saas }: AppProps) {
     }
   };
 
-  // プッシュ通知の購読セットアップ
+  // 1. Service Worker の登録とアプリ更新（バージョン確認）の監視
   useEffect(() => {
-    if (loading || !session || isAdminPortalMode) return;
+    if (loading) return;
 
-    const setupPushNotifications = async () => {
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('Push notifications are not supported in this browser.');
+    const setupServiceWorker = async () => {
+      if (!('serviceWorker' in navigator)) {
         return;
       }
 
       try {
-        // Service Worker の登録
         const registration = await navigator.serviceWorker.register('/sw.js');
 
         // 新しい Service Worker が存在するか確認するハンドラ
@@ -602,6 +600,34 @@ function AppContent({ saas }: AppProps) {
         };
 
         handleUpdate(registration);
+
+        // 起動時に明示的に更新があるか確認する
+        try {
+          await registration.update();
+        } catch (updateErr) {
+          console.warn('Failed to trigger service worker update check:', updateErr);
+        }
+      } catch (err) {
+        console.error('Failed to register service worker:', err);
+      }
+    };
+
+    setupServiceWorker();
+  }, [loading]);
+
+  // 2. プッシュ通知の購読セットアップ
+  useEffect(() => {
+    if (loading || !session || isAdminPortalMode) return;
+
+    const setupPushNotifications = async () => {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Push notifications are not supported in this browser.');
+        return;
+      }
+
+      try {
+        // 登録済みの Service Worker 登録オブジェクトを取得
+        const registration = await navigator.serviceWorker.ready;
 
         // 通知の許可状況を確認し、必要に応じて許可を求める
         if (Notification.permission === 'default') {
@@ -659,7 +685,7 @@ function AppContent({ saas }: AppProps) {
     };
 
     setupPushNotifications();
-  }, [session]);
+  }, [loading, session, isAdminPortalMode]);
 
   // SaaS管理者ポータルのレンダリング分岐
   if (loading) {
