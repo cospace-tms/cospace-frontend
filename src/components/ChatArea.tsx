@@ -61,6 +61,8 @@ interface ChatAreaProps {
     memberUsed: number;
     channelLimit: number;
     channelUsed: number;
+    dmEnabled?: boolean;
+    mediaEnabled?: boolean;
   } | null;
 }
 
@@ -1697,14 +1699,16 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                 />
                 <div className="chat-input-actions">
                   <div className="input-action-buttons" style={{ position: 'relative' }}>
-                    <button 
-                      type="button" 
-                      className="input-icon-btn" 
-                      title={isEn ? 'Attach file' : 'ファイルを添付'}
-                      onClick={triggerFileSelect}
-                    >
-                      <Paperclip size={18} />
-                    </button>
+                    {subscription?.mediaEnabled !== false && (
+                      <button 
+                        type="button" 
+                        className="input-icon-btn" 
+                        title={isEn ? 'Attach file' : 'ファイルを添付'}
+                        onClick={triggerFileSelect}
+                      >
+                        <Paperclip size={18} />
+                      </button>
+                    )}
                     <input 
                       type="file" 
                       ref={fileInputRef} 

@@ -57,6 +57,8 @@ interface SidebarProps {
     memberUsed: number;
     channelLimit: number;
     channelUsed: number;
+    dmEnabled?: boolean;
+    mediaEnabled?: boolean;
   } | null;
 }
 
@@ -119,7 +121,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isOwner = currentUserRole === 'owner';
   const isGroupAdmin = currentUserRole === 'group_admin';
 
-  const starredChannels = channels.filter(c => c.isStarred);
+  const starredChannels = channels.filter(c => {
+    if (subscription?.dmEnabled === false && c.type === 'dm') {
+      return false;
+    }
+    return c.isStarred;
+  });
 
 
 
@@ -451,27 +458,29 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </button>
 
                       {/* メディア */}
-                      <button
-                        onClick={() => {
-                          setActiveView('media');
-                          setActiveChannelId(null);
-                          setShowWorkspaceMenu(false);
-                        }}
-                        style={{
-                          background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
-                          border: 'none',
-                          color: activeView === 'media' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                          cursor: 'pointer',
-                          padding: '6px',
-                          borderRadius: '4px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                        title={t('sidebar.mediaLibrary')}
-                      >
-                        <Image size={18} />
-                      </button>
+                      {subscription?.mediaEnabled !== false && (
+                        <button
+                          onClick={() => {
+                            setActiveView('media');
+                            setActiveChannelId(null);
+                            setShowWorkspaceMenu(false);
+                          }}
+                          style={{
+                            background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
+                            border: 'none',
+                            color: activeView === 'media' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                            padding: '6px',
+                            borderRadius: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title={t('sidebar.mediaLibrary')}
+                        >
+                          <Image size={18} />
+                        </button>
+                      )}
 
                       {/* 設定 / メンバー */}
                       {onOpenWorkspaceMembers && (
@@ -638,30 +647,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
 
               {/* メディア */}
-              <button
-                onClick={() => {
-                  setActiveView('media');
-                  setActiveChannelId(null);
-                }}
-                className={`sidebar-icon-btn ${activeView === 'media' ? 'active' : ''}`}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
-                  border: '1px solid ' + (activeView === 'media' ? 'var(--border-focus)' : 'var(--border-light)'),
-                  color: activeView === 'media' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  outline: 'none',
-                }}
-                title={t('sidebar.mediaLibrary')}
-              >
-                <Image size={18} />
-              </button>
+              {subscription?.mediaEnabled !== false && (
+                <button
+                  onClick={() => {
+                    setActiveView('media');
+                    setActiveChannelId(null);
+                  }}
+                  className={`sidebar-icon-btn ${activeView === 'media' ? 'active' : ''}`}
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
+                    border: '1px solid ' + (activeView === 'media' ? 'var(--border-focus)' : 'var(--border-light)'),
+                    color: activeView === 'media' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    outline: 'none',
+                  }}
+                  title={t('sidebar.mediaLibrary')}
+                >
+                  <Image size={18} />
+                </button>
+              )}
 
               {/* 設定 / メンバー */}
               {onOpenWorkspaceMembers && (
@@ -1013,7 +1024,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           {/* ダイレクトメッセージセクション - ゲスト以外 */}
-          {currentUserRole !== 'guest' && (
+          {currentUserRole !== 'guest' && subscription?.dmEnabled !== false && (
             <div className="sidebar-section" style={{ padding: isCollapsed ? '0 4px' : '0 8px' }}>
               {!isCollapsed ? (
                 <div 

@@ -299,6 +299,8 @@ export class ApiClient {
     memberUsed: number;
     channelLimit: number;
     channelUsed: number;
+    dmEnabled?: boolean;
+    mediaEnabled?: boolean;
   }> {
     const response = await this.get<{
       success: boolean;
@@ -311,6 +313,8 @@ export class ApiClient {
         memberUsed: number;
         channelLimit: number;
         channelUsed: number;
+        dmEnabled?: boolean;
+        mediaEnabled?: boolean;
       };
     }>(`/api/workspaces/${workspaceId}/subscription`);
     return response.data;

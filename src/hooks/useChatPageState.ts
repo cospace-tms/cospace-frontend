@@ -100,12 +100,15 @@ export const useChatPageState = ({
   // サブスクリプション制限情報ステート
   const [subscription, setSubscription] = useState<{
     plan: string;
+    planName?: string;
     storageLimit: number;
     storageUsed: number;
     memberLimit: number;
     memberUsed: number;
     channelLimit: number;
     channelUsed: number;
+    dmEnabled?: boolean;
+    mediaEnabled?: boolean;
   } | null>(null);
 
   const fetchSubscription = useCallback(async (wsId: string) => {

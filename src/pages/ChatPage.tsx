@@ -103,12 +103,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   // サブスクリプション制限情報ステート
   const [subscription, setSubscription] = useState<{
     plan: string;
+    planName?: string;
     storageLimit: number;
     storageUsed: number;
     memberLimit: number;
     memberUsed: number;
     channelLimit: number;
     channelUsed: number;
+    dmEnabled?: boolean;
+    mediaEnabled?: boolean;
   } | null>(null);
 
   const fetchSubscription = useCallback(async (wsId: string) => {
@@ -1003,7 +1006,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             highlightItemId={jumpItemId}
             onClearHighlightItem={() => setJumpItemId(null)}
           />
-        ) : activeView === 'media' ? (
+        ) : (activeView === 'media' && subscription?.mediaEnabled !== false) ? (
           <MediaLibraryArea
             workspaceId={activeWorkspaceId}
             currentUserId={currentUser.id}
