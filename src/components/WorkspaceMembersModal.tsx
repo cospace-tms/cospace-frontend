@@ -68,6 +68,7 @@ interface WorkspaceMembersModalProps {
     channelUsed: number;
   } | null;
   fetchSubscription?: (wsId: string) => Promise<void>;
+  isSaasMode?: boolean;
 }
 
 export interface ExtraTab {
@@ -94,6 +95,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
   memberLimitMessage,
   subscription,
   fetchSubscription,
+  isSaasMode = false,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
@@ -582,7 +584,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
             <span>{t('workspace.statuses')}</span>
           </button>
         )}
-        {isOwner && (
+        {isOwner && !isSaasMode && (
           <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
             <Mail size={16} />
             <span>{t('workspace.smtp')}</span>
@@ -607,7 +609,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
         ) : activeTab === 'statuses' ? (
           renderStatusesTab()
         ) : activeTab === 'smtp' ? (
-          isOwner && <SmtpSettingsTab />
+          isOwner && !isSaasMode && <SmtpSettingsTab />
         ) : (
           extraTabs && extraTabs.find(tab => tab.id === activeTab)?.content
         )}
@@ -666,7 +668,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                 <span>{t('workspace.statuses')}</span>
               </button>
             )}
-            {isOwner && (
+            {isOwner && !isSaasMode && (
               <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
                 <Mail size={16} />
                 <span>{t('workspace.smtp')}</span>
@@ -689,7 +691,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
               <WorkspaceGroupsTab workspaceId={workspace.id} workspaceMembers={members} currentUserRole={currentUserRole} currentUserLedGroups={currentUserLedGroups} />
             )}
             {activeTab === 'statuses' && renderStatusesTab()}
-            {activeTab === 'smtp' && workspace && <SmtpSettingsTab />}
+            {activeTab === 'smtp' && workspace && !isSaasMode && <SmtpSettingsTab />}
             {extraTabs && extraTabs.find(tab => tab.id === activeTab)?.content}
           </div>
         </div>

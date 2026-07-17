@@ -989,6 +989,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               subscription={subscription}
               fetchSubscription={fetchSubscription}
               initialTab={workspaceSettingsInitialTab}
+              isSaasMode={saas?.isSaasMode}
             />
           </div>
         ) : activeView === 'items' ? (
