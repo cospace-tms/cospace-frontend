@@ -1,4 +1,4 @@
-// フロントエンド側 Service Worker (sw.js) - バックグラウンドでのプッシュ通知受信と処理
+// フロントエンド側 Service Worker (sw.js) v1- バックグラウンドでのプッシュ通知受信と処理
 
 self.addEventListener('push', (event) => {
   let data = {
@@ -35,7 +35,7 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   let linkUrl = event.notification.data?.linkUrl || '/';
-  
+
   // 相対パスの場合は、明示的にService Workerのoriginを付与して絶対URL化（予期せぬAPIドメイン等への遷移を完全防止）
   if (linkUrl.startsWith('/')) {
     linkUrl = new URL(linkUrl, self.location.origin).toString();
