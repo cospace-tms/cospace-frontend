@@ -680,7 +680,7 @@ function AppContent({ saas }: AppProps) {
   }
 
   // SaaS管理者未登録時の一般ユーザー向け準備中画面
-  if (isSaasMode && adminSetupRequired && isAdminPortalMode !== true) {
+  if (isSaasMode && adminSetupRequired) {
     return (
       <div className="setup-container">
         <div className="setup-card" style={{ textAlign: 'center', maxWidth: '460px', padding: '40px' }}>
