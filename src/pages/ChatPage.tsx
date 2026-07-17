@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Loader } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { ChatArea } from '../components/ChatArea';
 import { ItemsArea } from '../components/ItemsArea';
@@ -113,6 +114,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     dmEnabled?: boolean;
     mediaEnabled?: boolean;
   } | null>(null);
+
+  const [loadingWorkspace, setLoadingWorkspace] = useState<boolean>(true);
 
   const fetchSubscription = useCallback(async (wsId: string) => {
     try {
@@ -401,10 +404,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             const initialWsId = activeWorkspaceId || wsResponse.data[0].id;
             setActiveWorkspaceId(initialWsId);
             fetchUserRole(initialWsId);
+          } else {
+            setLoadingWorkspace(false);
           }
+        } else {
+          setLoadingWorkspace(false);
         }
       } catch (err) {
         console.warn('Workspace API fallback to default:', err);
+        setLoadingWorkspace(false);
       }
     };
     loadSidebarData();
@@ -417,13 +425,33 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     fetchCustomEmojis(activeWorkspaceId);
 
     const loadChannelsAndMembers = async () => {
-      fetchSubscription(activeWorkspaceId);
+      setLoadingWorkspace(true);
       try {
-        const chanResponse = await apiClient.get<{ success: boolean; data: Channel[] }>(
-          `/api/workspaces/${activeWorkspaceId}/channels`,
-          { last_reads: getLastReadsParam() }
-        );
-        if (chanResponse.success && Array.isArray(chanResponse.data)) {
+        const [subRes, chanResponse, memResponse] = await Promise.all([
+          apiClient.getWorkspaceSubscription(activeWorkspaceId).catch(err => {
+            console.error("Failed to fetch subscription status:", err);
+            return null;
+          }),
+          apiClient.get<{ success: boolean; data: Channel[] }>(
+            `/api/workspaces/${activeWorkspaceId}/channels`,
+            { last_reads: getLastReadsParam() }
+          ).catch(err => {
+            console.warn('Channels API fallback to default:', err);
+            return null;
+          }),
+          apiClient.get<{ success: boolean; data: any[] }>(
+            `/api/workspaces/${activeWorkspaceId}/members`
+          ).catch(err => {
+            console.warn('Workspace members load error:', err);
+            return null;
+          })
+        ]);
+
+        if (subRes) {
+          setSubscription(subRes);
+        }
+
+        if (chanResponse && chanResponse.success && Array.isArray(chanResponse.data)) {
           setChannels(chanResponse.data);
           
           // そのワークスペースで最後に見ていたチャンネルIDを取得
@@ -438,19 +466,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             setActiveChannelId(null);
           }
         }
-      } catch (err) {
-        console.warn('Channels API fallback to default:', err);
-      }
 
-      try {
-        const memResponse = await apiClient.get<{ success: boolean; data: any[] }>(
-          `/api/workspaces/${activeWorkspaceId}/members`
-        );
-        if (memResponse.success && Array.isArray(memResponse.data)) {
+        if (memResponse && memResponse.success && Array.isArray(memResponse.data)) {
           setWorkspaceMembers(memResponse.data);
         }
       } catch (err) {
-        console.warn('Workspace members load error:', err);
+        console.error('Failed to load workspace data:', err);
+      } finally {
+        setLoadingWorkspace(false);
       }
     };
     fetchUserRole(activeWorkspaceId);
@@ -892,6 +915,14 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId) || null;
   const activeChannel = channels.find((c) => c.id === activeChannelId) || null;
 
+  if (loadingWorkspace) {
+    return (
+      <div className="setup-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main, #0f172a)' }}>
+        <Loader className="animate-spin" size={32} style={{ color: 'var(--accent-primary, #0ea5e9)' }} />
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="app-container">
@@ -1076,6 +1107,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               setActiveView('search');
               setActiveChannelId(null);
             }}
+            onCreateDm={handleCreateDm}
           />
         ) : (
           <div className="no-message-selected" style={{ flex: 1 }}>

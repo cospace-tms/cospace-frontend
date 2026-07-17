@@ -64,6 +64,7 @@ interface ChatAreaProps {
     dmEnabled?: boolean;
     mediaEnabled?: boolean;
   } | null;
+  onCreateDm?: (memberIds: string[], name: string) => Promise<void>;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -95,6 +96,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onJumpToMessage,
   onSearchClick,
   subscription,
+  onCreateDm,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
@@ -1124,6 +1126,19 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                         <span className="member-popover-name">{member.displayName}</span>
                         <span className="member-popover-email">{member.email}</span>
                       </div>
+                      {member.userId !== currentUserId && subscription?.dmEnabled !== false && onCreateDm && (
+                        <button
+                          className="member-dm-btn"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            await onCreateDm([currentUserId, member.userId], member.displayName);
+                            setShowMembersPopover(false);
+                          }}
+                          title={isEn ? 'Start DM' : 'DMを開始'}
+                        >
+                          <MessageSquare size={14} />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>

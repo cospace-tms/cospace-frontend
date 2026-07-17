@@ -1329,6 +1329,25 @@ body {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.member-dm-btn {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.member-dm-btn:hover {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--accent-primary);
+}
+
 .member-popover-avatar {
   width: 32px;
   height: 32px;
