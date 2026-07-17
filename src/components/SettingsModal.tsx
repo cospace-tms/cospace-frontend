@@ -26,6 +26,7 @@ interface SettingsModalProps {
   onDeleteChannel: () => Promise<void>;
   subscription?: {
     plan: string;
+    planName?: string;
     storageLimit: number;
     storageUsed: number;
     memberLimit: number;
@@ -300,7 +301,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="subscription-tab-content">
               <div className="plan-badge-container">
                 <span className="plan-label">現在のプラン:</span>
-                <span className="plan-badge free-badge">無料プラン</span>
+                <span className="plan-badge free-badge">
+                  {subscription.planName || (subscription.plan === 'free' ? '無料プラン' : subscription.plan)}
+                </span>
               </div>
               <p className="plan-description">
                 現在は無料枠の制限が適用されています。将来的には有料プランに切り替えることで、制限のない高度な機能をご利用いただけるようになります。

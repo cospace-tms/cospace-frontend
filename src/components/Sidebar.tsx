@@ -50,6 +50,7 @@ interface SidebarProps {
   onToggleStarChannel?: (channelId: string, currentStarred: boolean) => Promise<void>;
   subscription?: {
     plan: string;
+    planName?: string;
     storageLimit: number;
     storageUsed: number;
     memberLimit: number;
@@ -263,7 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }}
                       title="プランと制限を確認"
                     >
-                      無料プラン
+                      {subscription.planName || (subscription.plan === 'free' ? '無料プラン' : subscription.plan)}
                     </span>
                   )}
                 </div>
