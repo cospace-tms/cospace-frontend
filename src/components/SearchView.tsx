@@ -5,6 +5,7 @@ import { useLanguage } from '../utils/i18n';
 
 interface SearchViewProps {
   workspaceId: string | null;
+  workspaces?: { id: string; name: string }[];
   customEmojis: any[];
   onJumpToMessage?: (channelId: string, messageId: string) => void;
   onMenuClick?: () => void;
@@ -12,6 +13,7 @@ interface SearchViewProps {
 
 export const SearchView: React.FC<SearchViewProps> = ({
   workspaceId,
+  workspaces = [],
   customEmojis = [],
   onJumpToMessage,
   onMenuClick,
@@ -19,20 +21,27 @@ export const SearchView: React.FC<SearchViewProps> = ({
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
 
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string>(workspaceId || 'all');
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<{ messages: any[]; documents: any[] }>({ messages: [], documents: [] });
   const [hasSearched, setHasSearched] = useState(false);
 
+  React.useEffect(() => {
+    if (workspaceId) {
+      setSelectedWorkspaceId(workspaceId);
+    }
+  }, [workspaceId]);
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!query.trim() || !workspaceId) return;
+    if (!query.trim() || !selectedWorkspaceId) return;
 
     setSearching(true);
     setHasSearched(true);
     try {
       const res = await apiClient.get<{ success: boolean; data: any }>(
-        `/api/workspaces/${workspaceId}/search?q=${encodeURIComponent(query)}`
+        `/api/workspaces/${selectedWorkspaceId}/search?q=${encodeURIComponent(query)}`
       );
       if (res.success && res.data) {
         setResults(res.data);
@@ -120,6 +129,9 @@ export const SearchView: React.FC<SearchViewProps> = ({
             flex-direction: column;
             max-width: 100%;
           }
+          .search-select-field {
+            width: 100%;
+          }
           .search-submit-button {
             width: 100%;
           }
@@ -159,6 +171,29 @@ export const SearchView: React.FC<SearchViewProps> = ({
       {/* ページコンテンツ上部の検索入力エリア（コンテンツ側） */}
       <div style={{ padding: '24px 32px 0 32px', flexShrink: 0 }}>
         <form onSubmit={handleSearch} className="search-form-container">
+          <select
+            value={selectedWorkspaceId}
+            onChange={(e) => setSelectedWorkspaceId(e.target.value)}
+            className="search-select-field"
+            style={{
+              padding: '10px 16px',
+              fontSize: '14px',
+              borderRadius: '6px',
+              border: '1px solid var(--border-light)',
+              background: 'var(--bg-panel)',
+              color: 'var(--text-primary)',
+              outline: 'none',
+              cursor: 'pointer',
+              minWidth: '150px'
+            }}
+          >
+            <option value="all">{isEn ? 'All Workspaces' : 'すべてのワークスペース'}</option>
+            {workspaces.map((ws) => (
+              <option key={ws.id} value={ws.id}>
+                {ws.name}
+              </option>
+            ))}
+          </select>
           <input
             type="text"
             className="search-input-field"

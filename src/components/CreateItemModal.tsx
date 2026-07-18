@@ -152,6 +152,7 @@ interface CreateItemModalProps {
   initialItem?: Item | any | null;
   initialDate?: string | null; // カレンダーの日付セル選択用
   initialType?: 'task' | 'event' | null; // チャットからのクイック連携用
+  groups?: any[]; // 追加
   onSave: (itemData: {
     id?: string;
     title: string;
@@ -165,6 +166,7 @@ interface CreateItemModalProps {
     isAllDay: boolean;
     isPrivate: boolean;
     channelIds: string[];
+    assignedGroupId?: string | null; // 追加
   }) => Promise<void>;
   onDelete?: (id: string) => Promise<void>;
 }
@@ -179,6 +181,7 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
   initialItem,
   initialDate,
   initialType,
+  groups = [], // 追加
   onSave,
   onDelete,
 }) => {
@@ -201,6 +204,7 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
   
   const [isPrivate, setIsPrivate] = useState(true);
   const [channelIds, setChannelIds] = useState<string[]>([]);
+  const [assignedGroupId, setAssignedGroupId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleAllDayChange = (checked: boolean) => {
@@ -256,6 +260,7 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
       
       setIsAllDay(!!initialItem.isAllDay);
       setIsPrivate(!!initialItem.isPrivate);
+      setAssignedGroupId(initialItem.assignedGroupId || '');
 
       const cIds = Array.isArray(initialItem.channels) 
         ? initialItem.channels.map((c: any) => c.id) 
@@ -270,6 +275,7 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
       setTags([]);
       setTagInput('');
       setIsAllDay(false);
+      setAssignedGroupId('');
 
       const isEvent = initialType === 'event' || !!initialDate;
       setHasDateTime(isEvent);
@@ -392,6 +398,7 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
         isAllDay: hasDateTime ? isAllDay : false,
         isPrivate,
         channelIds,
+        assignedGroupId: assignedGroupId || null,
       });
       onClose();
     } catch (err: any) {
@@ -539,6 +546,23 @@ export const CreateItemModal: React.FC<CreateItemModalProps> = ({
             <option value="high">{isEn ? 'High' : '高 (High)'}</option>
           </select>
         </div>
+      </div>
+
+      {/* 担当グループ選択 */}
+      <div className="form-group">
+        <label className="form-label">{isEn ? 'Assigned Group (Optional)' : '担当グループ（省略可能）'}</label>
+        <select
+          value={assignedGroupId}
+          onChange={(e) => setAssignedGroupId(e.target.value)}
+          className="form-input"
+          style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--border-light)' }}
+          disabled={submitting}
+        >
+          <option value="">{isEn ? 'None' : 'グループなし'}</option>
+          {groups.map(g => (
+            <option key={g.id} value={g.id}>{g.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* 複数担当者選択 */}

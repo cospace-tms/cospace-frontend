@@ -13,6 +13,7 @@ interface CreateChannelModalProps {
   onClose: () => void;
   workspaceId: string | null;
   onCreateChannel: (name: string, description: string, isPrivate: boolean, groupId?: string) => Promise<void>;
+  defaultGroupId?: string;
 }
 
 export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
@@ -20,6 +21,7 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
   onClose,
   workspaceId,
   onCreateChannel,
+  defaultGroupId,
 }) => {
   const { t } = useLanguage();
   const [channelName, setChannelName] = useState('');
@@ -49,8 +51,8 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
     setChannelName('');
     setDescription('');
     setIsPrivate(false);
-    setSelectedGroupId('');
-  }, [isOpen, workspaceId]);
+    setSelectedGroupId(defaultGroupId || '');
+  }, [isOpen, workspaceId, defaultGroupId]);
 
   if (!isOpen) return null;
 
@@ -114,7 +116,13 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
               <label className="form-label">{t('error') === 'Error' ? 'Link to a specific group (optional)' : '特定のグループに紐付ける（省略可能）'}</label>
               <select
                 value={selectedGroupId}
-                onChange={(e) => setSelectedGroupId(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedGroupId(val);
+                  if (val) {
+                    setIsPrivate(true);
+                  }
+                }}
                 className="form-input"
                 style={{ background: 'rgba(0,0,0,0.3)', color: '#fff', border: '1px solid var(--border-light)' }}
                 disabled={submitting}
@@ -132,20 +140,24 @@ export const CreateChannelModal: React.FC<CreateChannelModalProps> = ({
             </div>
 
             <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '500' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: selectedGroupId ? 'not-allowed' : 'pointer', fontWeight: '500', opacity: selectedGroupId ? 0.7 : 1 }}>
                 <input
                   type="checkbox"
                   checked={isPrivate}
                   onChange={(e) => setIsPrivate(e.target.checked)}
                   style={{ width: '16px', height: '16px', accentColor: 'var(--primary-color)' }}
-                  disabled={submitting}
+                  disabled={submitting || !!selectedGroupId}
                 />
                 <span>{t('error') === 'Error' ? 'Make Private Channel' : 'プライベートチャンネルにする'}</span>
               </label>
               <span className="form-help">
-                {t('error') === 'Error' 
-                  ? 'Private channels can only be viewed by invited members or group leaders.' 
-                  : 'プライベートにすると、招待されたメンバーまたはグループリーダーのみが閲覧できます。'}
+                {selectedGroupId
+                  ? (t('error') === 'Error' 
+                      ? 'Channels linked to a group are forced to be private.' 
+                      : 'グループに紐付けられたチャンネルは、強制的にプライベート（非公開）になります。')
+                  : (t('error') === 'Error' 
+                      ? 'Private channels can only be viewed by invited members or group leaders.' 
+                      : 'プライベートにすると、招待されたメンバーまたはグループリーダーのみが閲覧できます。')}
               </span>
             </div>
           </div>

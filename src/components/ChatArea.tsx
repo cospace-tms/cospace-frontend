@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Message } from '../hooks/useChat';
-import { Send, Smile, Paperclip, AlertCircle, RefreshCw, Trash2, HelpCircle, X, Loader, MessageSquare, CheckSquare, BookOpen, Menu, Image, Pin, Search, Plus, Upload, Maximize2, Minimize2 } from 'lucide-react';
+import { Send, Smile, Paperclip, AlertCircle, RefreshCw, Trash2, HelpCircle, X, Loader, MessageSquare, CheckSquare, BookOpen, Menu, Image, Pin, Search, Plus, Upload, Maximize2, Minimize2, UserMinus } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { CreateItemModal } from './CreateItemModal';
 import { DocumentPanel } from './DocumentPanel';
@@ -65,6 +65,8 @@ interface ChatAreaProps {
     mediaEnabled?: boolean;
   } | null;
   onCreateDm?: (memberIds: string[], name: string) => Promise<void>;
+  currentUserLedGroups?: string[];
+  onRefreshChannelMembers?: (channelId: string) => Promise<void>;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -97,6 +99,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onSearchClick,
   subscription,
   onCreateDm,
+  currentUserLedGroups = [],
+  onRefreshChannelMembers,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
@@ -399,6 +403,24 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   const [isItemModalOpen, setIsItemModalOpen] = useState(false);
   const [itemInitialData, setItemInitialData] = useState<any>(null);
   const [itemInitialType, setItemInitialType] = useState<'task' | 'event' | null>(null);
+  const [groups, setGroups] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const fetchGroups = async () => {
+      try {
+        const res = await apiClient.get<{ success: boolean; data: any[] }>(
+          `/api/workspaces/${workspaceId}/groups`
+        );
+        if (res.success && Array.isArray(res.data)) {
+          setGroups(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load groups in ChatArea:', err);
+      }
+    };
+    fetchGroups();
+  }, [workspaceId]);
 
   const handleAddItemFromMessage = (msg: Message, type: 'task' | 'event') => {
     const currentChan = channels.find(c => c.id === activeChannelId);
@@ -470,6 +492,50 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
   // メンバー一覧ポップオーバーの表示管理
   const [showMembersPopover, setShowMembersPopover] = useState(false);
+  const [selectedMemberToAdd, setSelectedMemberToAdd] = useState('');
+  const [addingMember, setAddingMember] = useState(false);
+
+  // メンバー追加処理
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMemberToAdd || !activeChannelId) return;
+    setAddingMember(true);
+    try {
+      const res = await apiClient.post<{ success: boolean; data: any }>(
+        `/api/channels/${activeChannelId}/members`,
+        { userId: selectedMemberToAdd }
+      );
+      if (res.success) {
+        setSelectedMemberToAdd('');
+        if (onRefreshChannelMembers) {
+          await onRefreshChannelMembers(activeChannelId);
+        }
+      }
+    } catch (err: any) {
+      alert((isEn ? 'Failed to add member: ' : 'メンバーの追加に失敗しました: ') + (err.message || err));
+    } finally {
+      setAddingMember(false);
+    }
+  };
+
+  // メンバー除外処理
+  const handleDeleteMember = async (targetUserId: string) => {
+    if (!activeChannelId) return;
+    if (confirm(isEn ? 'Remove this member from the channel?' : 'このメンバーをチャンネルから除外しますか？')) {
+      try {
+        const res = await apiClient.delete<{ success: boolean }>(
+          `/api/channels/${activeChannelId}/members/${targetUserId}`
+        );
+        if (res.success) {
+          if (onRefreshChannelMembers) {
+            await onRefreshChannelMembers(activeChannelId);
+          }
+        }
+      } catch (err: any) {
+        alert((isEn ? 'Failed to remove member: ' : 'メンバーの除外に失敗しました: ') + (err.message || err));
+      }
+    }
+  };
 
   const commonEmojis = ['👍', '❤️', '😂', '😮', '😢', '🙏', '🔥', '🎉'];
 
@@ -1093,57 +1159,113 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             </div>
 
             {/* メンバー一覧ポップオーバー（サブヘッダー下・左揃え） */}
-            {showMembersPopover && channelMembers && channelMembers.length > 0 && (
-              <div 
-                className="members-popover"
-                style={{
-                  position: 'absolute',
-                  top: '48px',
-                  left: '24px',
-                  zIndex: 100,
-                }}
-              >
-                <div className="members-popover-header">
-                  <span className="members-popover-title">{isEn ? `Members (${channelMembers.length})` : `メンバー (${channelMembers.length})`}</span>
-                  <button 
-                    className="members-popover-close"
-                    onClick={() => setShowMembersPopover(false)}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="members-popover-list">
-                  {channelMembers.map((member) => (
-                    <div key={member.userId} className="members-popover-item">
-                      <div className="member-popover-avatar">
-                        {member.avatarUrl ? (
-                          <img src={member.avatarUrl} alt={member.displayName} />
-                        ) : (
-                          member.displayName.substring(0, 1).toUpperCase()
-                        )}
+            {showMembersPopover && channelMembers && channelMembers.length > 0 && (() => {
+              const activeChannel = channels.find(c => c.id === activeChannelId) || null;
+              const isOwner = currentUserRole === 'owner';
+              const isGroupLeader = !!(activeChannel?.groupId && currentUserLedGroups.includes(activeChannel.groupId));
+              const isDmMember = activeChannel?.type === 'dm' && channelMembers.some(m => m.userId === currentUserId);
+              const canManageMembers = isOwner || isGroupLeader || isDmMember;
+
+              const availableMembers = workspaceMembers.filter(wm => 
+                !channelMembers.some(cm => cm.userId === wm.userId)
+              );
+
+              return (
+                <div 
+                  className="members-popover"
+                  style={{
+                    position: 'absolute',
+                    top: '48px',
+                    left: '24px',
+                    zIndex: 100,
+                  }}
+                >
+                  <div className="members-popover-header">
+                    <span className="members-popover-title">{isEn ? `Members (${channelMembers.length})` : `メンバー (${channelMembers.length})`}</span>
+                    <button 
+                      className="members-popover-close"
+                      onClick={() => setShowMembersPopover(false)}
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div className="members-popover-list" style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                    {(!activeChannel?.isPrivate && activeChannel?.type !== 'dm') ? (
+                      <div style={{ padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: '6px', border: '1px dashed var(--border-light)', color: 'var(--text-muted)', fontSize: '11px', textAlign: 'center', marginBottom: '8px' }}>
+                        {isEn ? 'Public channel: all members join automatically.' : 'パブリックチャンネル：全員が自動参加します。'}
                       </div>
-                      <div className="member-popover-info">
-                        <span className="member-popover-name">{member.displayName}</span>
-                        <span className="member-popover-email">{member.email}</span>
+                    ) : (
+                      canManageMembers && (
+                        <form onSubmit={handleAddMember} style={{ display: 'flex', gap: '8px', padding: '4px 8px 12px 8px', borderBottom: '1px solid var(--border-light)', marginBottom: '8px' }}>
+                          <select
+                            value={selectedMemberToAdd}
+                            onChange={(e) => setSelectedMemberToAdd(e.target.value)}
+                            className="form-input"
+                            style={{ padding: '6px 10px', fontSize: '12px', flex: 1, background: 'var(--bg-input, #1e293b)', color: 'var(--text-primary)', border: '1px solid var(--border-light)', borderRadius: '4px' }}
+                            required
+                            disabled={addingMember}
+                          >
+                            <option value="">{isEn ? 'Invite member' : 'メンバーを招待'}</option>
+                            {availableMembers.map(m => (
+                              <option key={m.userId} value={m.userId}>{m.displayName}</option>
+                            ))}
+                          </select>
+                          <button type="submit" className="submit-btn" style={{ padding: '6px 10px', fontSize: '12px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '4px', borderRadius: '4px' }} disabled={addingMember}>
+                            <Plus size={12} />
+                            <span>{isEn ? 'Add' : '追加'}</span>
+                          </button>
+                        </form>
+                      )
+                    )}
+
+                    {channelMembers.map((member) => (
+                      <div key={member.userId} className="members-popover-item" style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 8px' }}>
+                        <div className="member-popover-avatar">
+                          {member.avatarUrl ? (
+                            <img src={member.avatarUrl} alt={member.displayName} />
+                          ) : (
+                            member.displayName.substring(0, 1).toUpperCase()
+                          )}
+                        </div>
+                        <div className="member-popover-info" style={{ flex: 1, minWidth: 0 }}>
+                          <span className="member-popover-name" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.displayName}</span>
+                          <span className="member-popover-email" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{member.email}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          {member.userId !== currentUserId && subscription?.dmEnabled !== false && onCreateDm && (
+                            <button
+                              className="member-dm-btn"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                await onCreateDm([currentUserId, member.userId], member.displayName);
+                                setShowMembersPopover(false);
+                              }}
+                              title={isEn ? 'Start DM' : 'DMを開始'}
+                              style={{ padding: '4px', borderRadius: '4px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                            >
+                              <MessageSquare size={14} />
+                            </button>
+                          )}
+                          {(activeChannel?.isPrivate || activeChannel?.type === 'dm') && canManageMembers && member.userId !== currentUserId && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteMember(member.userId);
+                              }}
+                              className="danger-btn"
+                              style={{ padding: '4px', borderRadius: '4px', background: 'none', border: 'none', color: 'var(--accent-danger, #ef4444)', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                              title={isEn ? 'Remove from channel' : 'チャンネルから除外'}
+                            >
+                              <UserMinus size={14} />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      {member.userId !== currentUserId && subscription?.dmEnabled !== false && onCreateDm && (
-                        <button
-                          className="member-dm-btn"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            await onCreateDm([currentUserId, member.userId], member.displayName);
-                            setShowMembersPopover(false);
-                          }}
-                          title={isEn ? 'Start DM' : 'DMを開始'}
-                        >
-                          <MessageSquare size={14} />
-                        </button>
-                      )}
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* ピン留めメッセージポップオーバー（サブヘッダー下・左揃え） */}
             {showPins && (
@@ -1887,6 +2009,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           activeChannelId={activeChannelId}
           initialItem={itemInitialData}
           initialType={itemInitialType}
+          groups={groups}
           onSave={handleSaveItemFromChat}
         />
       </div>

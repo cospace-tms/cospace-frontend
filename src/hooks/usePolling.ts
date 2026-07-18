@@ -22,7 +22,7 @@ export function usePolling({
   channelId,
   onFetch,
   minInterval = 3000,
-  maxInterval = 60000,
+  maxInterval = 180000,
 }: UsePollingOptions) {
   // 現在のポーリング間隔
   const [intervalTime, setIntervalTime] = useState<number>(minInterval);
@@ -164,6 +164,28 @@ export function usePolling({
       }
     };
   }, [channelId, isActive, intervalTime, minInterval, maxInterval]);
+
+  // 5. Service Worker からの postMessage (プッシュ通知) 連携
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'PUSH_RECEIVED') {
+        const receivedChannelId = event.data.channelId;
+        // 受信した通知のチャンネルIDが、現在開いているチャンネルIDと一致する場合にのみ即時フェッチをトリガーする
+        if (receivedChannelId && receivedChannelId === channelId) {
+          triggerImmediatePoll.current().catch((err) => {
+            console.error('Immediate fetch failed on push notification:', err);
+          });
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    };
+  }, [channelId]);
 
   return {
     intervalTime,

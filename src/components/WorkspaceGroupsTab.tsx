@@ -31,6 +31,7 @@ interface WorkspaceGroupsTabProps {
   workspaceMembers: WorkspaceMember[];
   currentUserRole: 'owner' | 'group_admin' | 'guest' | 'member';
   currentUserLedGroups: string[];
+  onRefreshMembers?: () => void;
 }
 
 export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
@@ -38,6 +39,7 @@ export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
   workspaceMembers,
   currentUserRole,
   currentUserLedGroups,
+  onRefreshMembers,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
@@ -199,6 +201,7 @@ export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
             await apiClient.put(`/api/workspaces/${workspaceId}/members/${selectedMemberToAdd}`, { role: newRole });
           }
         }
+        onRefreshMembers?.();
       }
     } catch (err: any) {
       alert((isEn ? 'Failed to add member to group: ' : 'グループメンバーの追加に失敗しました: ') + (err.message || err));
@@ -227,6 +230,7 @@ export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
             await apiClient.put(`/api/workspaces/${workspaceId}/members/${member.userId}`, { role: newRole });
           }
         }
+        onRefreshMembers?.();
       }
     } catch (err: any) {
       alert((isEn ? 'Failed to toggle leader role: ' : 'リーダー権限の変更に失敗しました: ') + (err.message || err));
@@ -247,6 +251,7 @@ export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
         if (res.success) {
           setGroupMembers(prev => prev.filter(m => m.userId !== userId));
           setGroups(prev => prev.map(g => g.id === activeGroup.id ? { ...g, memberCount: g.memberCount - 1 } : g));
+          onRefreshMembers?.();
         }
       } catch (err: any) {
         alert((isEn ? 'Failed to remove group member: ' : 'グループメンバーの削除に失敗しました: ') + (err.message || err));
@@ -419,7 +424,7 @@ export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
             )}
 
             {/* メンバー追加フォーム */}
-            {isOwner && (
+            {canEditGroup && (
               <form onSubmit={handleAddMemberToGroup} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
                 <select
                   value={selectedMemberToAdd}
@@ -512,7 +517,7 @@ export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
                       )}
 
                       {/* 除外ボタン */}
-                      {isOwner && (
+                      {canEditGroup && (
                         <button
                           onClick={() => handleDeleteMemberFromGroup(member.userId)}
                           className="danger-btn"

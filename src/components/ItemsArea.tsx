@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, ListTodo, Calendar as CalendarIcon, User, ArrowRight, ArrowLeft, CheckCircle2, Lock, ChevronLeft, ChevronRight, Clock, Filter, Grid, List, Tag, AlertTriangle, Menu, Maximize2, Minimize2, X, Loader } from 'lucide-react';
+import { Plus, ListTodo, Calendar as CalendarIcon, User, ArrowRight, ArrowLeft, CheckCircle2, Lock, ChevronLeft, ChevronRight, Clock, Filter, Grid, List, Tag, AlertTriangle, Menu, Maximize2, Minimize2, X, Loader, Sliders } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { CreateItemModal } from './CreateItemModal';
 import { stripMarkdown } from '../utils/markdown';
@@ -36,6 +36,7 @@ interface Item {
   endAt: string | null;
   isAllDay: boolean;
   isPrivate: boolean;
+  assignedGroupId?: string | null;
   createdAt: string;
 }
 
@@ -54,6 +55,7 @@ interface ItemsAreaProps {
   onToggleFullScreen?: () => void;
   isFullScreen?: boolean;
   subheaderLeftPortalNode?: HTMLDivElement | null;
+  onUpdateWorkspace?: (name: string, customStatuses?: string) => Promise<void>;
 }
 
 export const ItemsArea: React.FC<ItemsAreaProps> = ({
@@ -71,6 +73,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
   onToggleFullScreen,
   isFullScreen = false,
   subheaderLeftPortalNode,
+  onUpdateWorkspace,
 }) => {
   const { t } = useLanguage();
   const [view, setView] = useState<'kanban' | 'calendar' | 'list' | 'timeline'>('kanban');
@@ -79,6 +82,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
   const [items, setItems] = useState<Item[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   // カレンダー用状態
@@ -90,6 +94,12 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [modalInitialType, setModalInitialType] = useState<'task' | 'event' | null>(null);
 
+  // ステータス管理ポップオーバー用の状態
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+  const [newStatusName, setNewStatusName] = useState('');
+  const [editingStatusIndex, setEditingStatusIndex] = useState<number | null>(null);
+  const [editingStatusValue, setEditingStatusValue] = useState<string>('');
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -97,6 +107,89 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
   const workspaceStatuses = workspace?.custom_statuses 
     ? workspace.custom_statuses.split(',').filter(Boolean)
     : ['todo', 'in_progress', 'done'];
+
+  // DBのタスクのうち、ワークスペース定義に含まれていないステータスを「未分類」として検出
+  const unclassifiedStatuses = Array.from(new Set(
+    items
+      .map(i => i.status)
+      .filter(status => status && !workspaceStatuses.includes(status))
+  ));
+
+  // 表示用に定義済み ＋ 未分類を合わせたリスト
+  const displayStatuses = [...workspaceStatuses, ...unclassifiedStatuses];
+
+  // ステータスの表示用ラベル（未分類の場合に補記）
+  const getStatusLabel = (status: string) => {
+    if (workspaceStatuses.includes(status)) {
+      return status;
+    }
+    return t('error') === 'Error' ? `Unclassified (${status})` : `未分類 (${status})`;
+  };
+
+  const triggerStatusUpdate = async (newStatuses: string[]) => {
+    if (!onUpdateWorkspace || !workspace) return;
+    try {
+      await onUpdateWorkspace(workspace.name, newStatuses.join(','));
+    } catch (err: any) {
+      alert((t('error') === 'Error' ? 'Failed to update statuses: ' : 'ステータスの更新に失敗しました: ') + (err.message || err));
+    }
+  };
+
+  const handleMoveStatus = (index: number, direction: 'up' | 'down') => {
+    const newStatuses = [...workspaceStatuses];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newStatuses.length) return;
+
+    const temp = newStatuses[index];
+    newStatuses[index] = newStatuses[targetIndex];
+    newStatuses[targetIndex] = temp;
+
+    triggerStatusUpdate(newStatuses);
+  };
+
+  const handleSaveStatusName = (index: number) => {
+    const trimmed = editingStatusValue.trim();
+    if (!trimmed) {
+      setEditingStatusIndex(null);
+      return;
+    }
+
+    const newStatuses = [...workspaceStatuses];
+    if (newStatuses.some((s, idx) => s === trimmed && idx !== index)) {
+      alert(t('error') === 'Error' ? 'Status name already exists.' : '同じ名前のステータスが既に存在します。');
+      return;
+    }
+
+    newStatuses[index] = trimmed;
+    setEditingStatusIndex(null);
+    triggerStatusUpdate(newStatuses);
+  };
+
+  const handleAddStatus = () => {
+    const trimmed = newStatusName.trim();
+    if (!trimmed) return;
+    if (workspaceStatuses.includes(trimmed)) {
+      alert(t('error') === 'Error' ? 'A status with the same name already exists.' : '同じ名前のステータスが既に存在します。');
+      return;
+    }
+    const nextStatuses = [...workspaceStatuses, trimmed];
+    setNewStatusName('');
+    triggerStatusUpdate(nextStatuses);
+  };
+
+  const handleRemoveStatus = (statusToRemove: string) => {
+    if (workspaceStatuses.length <= 1) {
+      alert(t('error') === 'Error' ? 'Cannot delete all statuses. At least one status is required.' : 'すべてのステータスを削除することはできません。最低1つのステータスが必要です。');
+      return;
+    }
+    const confirmMsg = t('error') === 'Error'
+      ? `Delete status "${statusToRemove}"?\n(Existing tasks with this status will be moved to the "Unclassified" column)`
+      : `ステータス「${statusToRemove}」を削除しますか？\n（このステータスが設定された既存タスクは「未分類」列として残り続けます）`;
+    if (confirm(confirmMsg)) {
+      const nextStatuses = workspaceStatuses.filter(s => s !== statusToRemove);
+      triggerStatusUpdate(nextStatuses);
+    }
+  };
 
   // データフェッチ
   const loadItems = async () => {
@@ -137,6 +230,23 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
   useEffect(() => {
     loadItems();
   }, [workspaceId, view, filter, year, month, activeChannelId]);
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    const fetchGroups = async () => {
+      try {
+        const res = await apiClient.get<{ success: boolean; data: any[] }>(
+          `/api/workspaces/${workspaceId}/groups`
+        );
+        if (res.success && Array.isArray(res.data)) {
+          setGroups(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load groups in ItemsArea:', err);
+      }
+    };
+    fetchGroups();
+  }, [workspaceId]);
 
   // 通知等からのスマートジャンプによるタスク自動オープン
   useEffect(() => {
@@ -225,6 +335,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
     isAllDay: boolean;
     isPrivate: boolean;
     channelIds: string[];
+    assignedGroupId?: string | null;
   }) => {
     if (!workspaceId) return;
 
@@ -407,6 +518,14 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         {/* ヘッダー (公開チャンネル一覧表示) */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '4px' }}>
           <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap', minWidth: 0 }}>
+            {item.assignedGroupId && (() => {
+              const group = groups.find(g => g.id === item.assignedGroupId);
+              return group ? (
+                <span key={group.id} style={{ fontSize: '9px', background: 'rgba(79, 70, 229, 0.1)', color: '#a5b4fc', border: '1px solid rgba(79, 70, 229, 0.2)', padding: '1px 5px', borderRadius: '3px', whiteSpace: 'nowrap' }}>
+                  👥 {group.name}
+                </span>
+              ) : null;
+            })()}
             {item.channels && item.channels.length > 0 ? (
               item.channels.map(chan => (
                 <span key={chan.id} style={{ fontSize: '9px', background: 'var(--bg-secondary)', color: 'var(--text-muted)', padding: '1px 5px', borderRadius: '3px', whiteSpace: 'nowrap' }}>
@@ -585,6 +704,14 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
                 <span>{t}</span>
               </span>
             ))}
+            {item.assignedGroupId && (() => {
+              const group = groups.find(g => g.id === item.assignedGroupId);
+              return group ? (
+                <span key={group.id} style={{ fontSize: '9px', background: 'rgba(79, 70, 229, 0.1)', color: '#a5b4fc', border: '1px solid rgba(79, 70, 229, 0.2)', padding: '1px 5px', borderRadius: '3px', whiteSpace: 'nowrap' }}>
+                  👥 {group.name}
+                </span>
+              ) : null;
+            })()}
             {item.channels && item.channels.map(chan => (
               <span key={chan.id} style={{ fontSize: '9px', background: 'var(--bg-secondary)', color: 'var(--text-muted)', padding: '1px 6px', borderRadius: '3px', whiteSpace: 'nowrap' }}>
                 # {chan.name}
@@ -682,27 +809,51 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         })}
       </div>
 
-      {/* 新規作成ボタン */}
-      <button
-        onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          background: 'var(--accent-primary)',
-          color: '#fff',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '12px',
-          fontWeight: '500',
-          transition: 'all 0.2s ease',
-        }}
-      >
-        <Plus size={14} />
-        <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* ステータス設定ボタン */}
+        {onUpdateWorkspace && (
+          <button
+            onClick={() => setIsStatusModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '6px',
+              borderRadius: '6px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-light)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            title={t('error') === 'Error' ? 'Manage Statuses' : 'ステータス管理'}
+          >
+            <Sliders size={14} />
+          </button>
+        )}
+
+        {/* 新規作成ボタン */}
+        <button
+          onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            background: 'var(--accent-primary)',
+            color: '#fff',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '500',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <Plus size={14} />
+          <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+        </button>
+      </div>
     </div>
   );
 
@@ -756,27 +907,54 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         })}
       </div>
 
-      {/* 右端の追加ボタン */}
-      <button
-        onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          padding: '6px 12px',
-          borderRadius: '6px',
-          background: 'var(--accent-primary)',
-          color: '#fff',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '12px',
-          fontWeight: '500',
-          transition: 'all 0.2s ease',
-        }}
-      >
-        <Plus size={14} />
-        <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* ステータス設定ボタン */}
+        {onUpdateWorkspace && (
+          <button
+            onClick={() => setIsStatusModalOpen(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-light)',
+              cursor: 'pointer',
+              fontSize: '12px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease',
+            }}
+            title={t('error') === 'Error' ? 'Manage Statuses' : 'ステータス管理'}
+          >
+            <Sliders size={14} />
+            <span>{t('error') === 'Error' ? 'Statuses' : 'ステータス'}</span>
+          </button>
+        )}
+
+        {/* 右端の追加ボタン */}
+        <button
+          onClick={() => openCreateModal(view === 'calendar' ? 'event' : 'task')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            background: 'var(--accent-primary)',
+            color: '#fff',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '500',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <Plus size={14} />
+          <span>{t('error') === 'Error' ? 'New Task' : '新規作成'}</span>
+        </button>
+      </div>
     </div>
   );
 
@@ -935,7 +1113,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
       {view === 'kanban' ? (
         /* 動的かんばんボード（カスタムステータス対応） */
         <div style={{ flex: 1, display: 'flex', gap: '20px', padding: '24px', overflowX: 'auto', alignItems: 'flex-start' }}>
-          {workspaceStatuses.map(status => {
+          {displayStatuses.map(status => {
             const statusItems = filteredItems.filter(i => i.status === status);
             return (
               <div 
@@ -953,8 +1131,8 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '2px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
                   <h3 style={{ fontSize: '14px', fontWeight: 'bold', margin: 0, color: '#f3f4f6', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: status === 'done' ? '#10b981' : status === 'in_progress' ? 'var(--primary-color)' : '#9ca3af' }}></span>
-                    <span>{status}</span>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: !workspaceStatuses.includes(status) ? '#f59e0b' : status === 'done' ? '#10b981' : status === 'in_progress' ? 'var(--primary-color)' : '#9ca3af' }}></span>
+                    <span>{getStatusLabel(status)}</span>
                   </h3>
                   <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
                     {statusItems.length}
@@ -974,14 +1152,14 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
       ) : view === 'list' ? (
         /* リストビュー */
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px', padding: '24px', overflowY: 'auto' }}>
-          {workspaceStatuses.map(status => {
+          {displayStatuses.map(status => {
             const statusItems = filteredItems.filter(i => i.status === status);
             return (
               <div key={status} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: status === 'done' ? '#10b981' : status === 'in_progress' ? 'var(--primary-color)' : '#9ca3af' }}></span>
+                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: !workspaceStatuses.includes(status) ? '#f59e0b' : status === 'done' ? '#10b981' : status === 'in_progress' ? 'var(--primary-color)' : '#9ca3af' }}></span>
                   <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#f3f4f6', margin: 0 }}>
-                    {status}
+                    {getStatusLabel(status)}
                   </h3>
                   <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '10px', color: 'var(--text-muted)' }}>
                     {statusItems.length}
@@ -1371,9 +1549,158 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         initialItem={selectedItem}
         initialDate={selectedDate}
         initialType={modalInitialType}
+        groups={groups}
         onSave={handleSaveItem}
         onDelete={handleDeleteItem}
       />
+
+      {/* ステータス管理モーダル */}
+      {isStatusModalOpen && (
+        <div 
+          className="modal-overlay" 
+          style={{ 
+            background: 'rgba(0,0,0,0.6)', 
+            zIndex: 10001, 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center' 
+          }} 
+          onClick={() => setIsStatusModalOpen(false)}
+        >
+          <div 
+            className="modal-content settings-modal" 
+            style={{ 
+              maxWidth: '420px', 
+              padding: '24px', 
+              background: 'var(--bg-primary)', 
+              border: '1px solid var(--border-light)', 
+              borderRadius: '8px' 
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>
+                {t('error') === 'Error' ? 'Workspace Statuses' : 'ステータス管理'}
+              </h3>
+              <button 
+                onClick={() => setIsStatusModalOpen(false)} 
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: '1.4' }}>
+                {t('error') === 'Error'
+                  ? 'Manage columns for task board. Tasks under deleted statuses will be moved to the "Unclassified" column.'
+                  : 'タスクボードの列を管理します。削除したステータスのタスクは「未分類」列に表示されます。'}
+              </p>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+                <input 
+                  type="text" 
+                  value={newStatusName} 
+                  onChange={(e) => setNewStatusName(e.target.value)} 
+                  placeholder={t('error') === 'Error' ? 'e.g. review' : '例: レビュー中'} 
+                  className="form-input" 
+                  style={{ flex: 1, marginBottom: 0, background: 'var(--bg-input)', border: '1px solid var(--border-light)', color: 'var(--text-primary)', padding: '8px 12px', borderRadius: '4px' }} 
+                />
+                <button 
+                  type="button" 
+                  onClick={handleAddStatus} 
+                  className="submit-btn" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 16px', margin: 0 }}
+                >
+                  <Plus size={14} />
+                  <span>{t('error') === 'Error' ? 'Add' : '追加'}</span>
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                {workspaceStatuses.map((status, index) => (
+                  <div 
+                    key={index} 
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '8px 12px', 
+                      background: 'var(--bg-secondary)', 
+                      border: '1px solid var(--border-light)', 
+                      borderRadius: '6px' 
+                    }}
+                  >
+                    {editingStatusIndex === index ? (
+                      <input
+                        type="text"
+                        value={editingStatusValue}
+                        onChange={(e) => setEditingStatusValue(e.target.value)}
+                        onBlur={() => handleSaveStatusName(index)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveStatusName(index);
+                          if (e.key === 'Escape') setEditingStatusIndex(null);
+                        }}
+                        autoFocus
+                        className="form-input"
+                        style={{ flex: 1, marginBottom: 0, padding: '4px 8px', fontSize: '13px' }}
+                      />
+                    ) : (
+                      <span 
+                        style={{ fontSize: '13px', color: 'var(--text-primary)', cursor: 'pointer' }}
+                        onClick={() => {
+                          setEditingStatusIndex(index);
+                          setEditingStatusValue(status);
+                        }}
+                        title={t('error') === 'Error' ? 'Click to rename' : 'クリックで名前変更'}
+                      >
+                        {status}
+                      </span>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <button 
+                        onClick={() => handleMoveStatus(index, 'up')} 
+                        disabled={index === 0} 
+                        style={{ padding: '4px', border: 'none', background: 'transparent', cursor: index === 0 ? 'not-allowed' : 'pointer', color: index === 0 ? 'var(--text-disabled)' : 'var(--text-muted)' }}
+                      >
+                        <ChevronLeft size={16} style={{ transform: 'rotate(90deg)' }} />
+                      </button>
+                      <button 
+                        onClick={() => handleMoveStatus(index, 'down')} 
+                        disabled={index === workspaceStatuses.length - 1} 
+                        style={{ padding: '4px', border: 'none', background: 'transparent', cursor: index === workspaceStatuses.length - 1 ? 'not-allowed' : 'pointer', color: index === workspaceStatuses.length - 1 ? 'var(--text-disabled)' : 'var(--text-muted)' }}
+                      >
+                        <ChevronLeft size={16} style={{ transform: 'rotate(-90deg)' }} />
+                      </button>
+                      <button 
+                        onClick={() => handleRemoveStatus(status)} 
+                        style={{ padding: '4px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--accent-danger)' }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '8px 16px', background: 'var(--border-light)', border: 'none', borderRadius: '4px', cursor: 'pointer', color: 'var(--text-primary)' }}
+                onClick={() => setIsStatusModalOpen(false)}
+              >
+                {t('error') === 'Error' ? 'Close' : '閉じる'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

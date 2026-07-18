@@ -15,20 +15,39 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const options = {
-    body: data.body,
-    // 401 Unauthorized等の画像ロード失敗による通知表示クラッシュを防ぐためアイコン指定を排除
-    data: {
-      linkUrl: data.linkUrl
-    },
-    vibrate: [100, 50, 100],
-    tag: 'cohive-notification', // 同じタグの通知は自動的にグループ化/上書きされる
-    renotify: true
-  };
+  const match = data.linkUrl ? data.linkUrl.match(/\/channels\/([^\/\?]+)/) : null;
+  const channelId = match ? match[1] : null;
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+  const promiseChain = self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    let hasActiveClient = false;
+    for (const client of clientList) {
+      // フロントエンドにメッセージ受信を通知
+      client.postMessage({
+        type: 'PUSH_RECEIVED',
+        channelId: channelId,
+        linkUrl: data.linkUrl
+      });
+      if (client.focused) {
+        hasActiveClient = true;
+      }
+    }
+
+    // すでにチャット画面をアクティブに開いている場合は、OS通知を省略する
+    if (!hasActiveClient) {
+      const options = {
+        body: data.body,
+        data: {
+          linkUrl: data.linkUrl
+        },
+        vibrate: [100, 50, 100],
+        tag: 'cohive-notification', // 同じタグの通知は自動的にグループ化/上書きされる
+        renotify: true
+      };
+      return self.registration.showNotification(data.title, options);
+    }
+  });
+
+  event.waitUntil(promiseChain);
 });
 
 self.addEventListener('notificationclick', (event) => {

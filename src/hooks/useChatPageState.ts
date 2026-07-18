@@ -298,7 +298,7 @@ export const useChatPageState = ({
 
   // 5. 動的ポーリングフックの有効化
   const pollingInfo = usePolling({
-    channelId: activeChannelId,
+    channelId: activeView === 'chat' ? activeChannelId : null,
     onFetch: fetchNewMessages,
   });
   const { triggerImmediatePoll } = pollingInfo;

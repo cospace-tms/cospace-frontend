@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   X, UserPlus, Shield, Trash2, Users, Sliders, Plus, Menu, Mail, Key, Loader, 
-  ArrowUp, ArrowDown, Edit2, CreditCard, FileText, Download, AlertCircle, CheckCircle, ExternalLink
+  ArrowUp, ArrowDown, Edit2, CreditCard, FileText, Download, AlertCircle, CheckCircle, ExternalLink,
+  MessageSquare
 } from 'lucide-react';
 import { WorkspaceGroupsTab } from './WorkspaceGroupsTab';
 import { SmtpSettingsTab } from './SmtpSettingsTab';
@@ -15,6 +16,7 @@ interface Member {
   avatarUrl: string | null;
   role: 'owner' | 'group_admin' | 'member' | 'guest';
   groupIds?: string[];
+  leaderGroupIds?: string[];
 }
 
 interface PublicPlan {
@@ -69,6 +71,8 @@ interface WorkspaceMembersModalProps {
   } | null;
   fetchSubscription?: (wsId: string) => Promise<void>;
   isSaasMode?: boolean;
+  isMembersOnly?: boolean;
+  onCreateDm?: (memberIds: string[], name: string) => Promise<void>;
 }
 
 export interface ExtraTab {
@@ -96,18 +100,22 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
   subscription,
   fetchSubscription,
   isSaasMode = false,
+  isMembersOnly = false,
+  onCreateDm,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
 
   // タブ管理
-  const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const [activeTab, setActiveTab] = useState<string>(
+    isMembersOnly ? 'members' : (initialTab === 'members' ? 'general' : initialTab)
+  );
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(initialTab);
+      setActiveTab(isMembersOnly ? 'members' : (initialTab === 'members' ? 'general' : initialTab));
     }
-  }, [initialTab]);
+  }, [initialTab, isMembersOnly]);
 
   // 各種ステート
   const [workspaceName, setWorkspaceName] = useState(workspace?.name || '');
@@ -126,6 +134,8 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
   // 新規メンバー招待ステート
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'owner' | 'group_admin' | 'member' | 'guest'>('member');
+  const [inviteGroupId, setInviteGroupId] = useState('');
+  const [groups, setGroups] = useState<any[]>([]);
   const [addingMember, setAddingMember] = useState(false);
 
   const isOwner = currentUserRole === 'owner';
@@ -150,6 +160,19 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
     }
   };
 
+  const loadGroups = async () => {
+    if (!workspace) return;
+    try {
+      const res = await apiClient.get<{ success: boolean; data: any[] }>(
+        `/api/workspaces/${workspace.id}/groups`
+      );
+      if (res.success && Array.isArray(res.data)) {
+        setGroups(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to load groups for members modal:', err);
+    }
+  };
   useEffect(() => {
     if ((isOpen || isEmbed) && workspace) {
       setWorkspaceName(workspace.name);
@@ -158,8 +181,15 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
         : ['todo', 'in_progress', 'done'];
       setCustomStatuses(statuses);
       loadMembers();
+      loadGroups();
     }
   }, [isOpen, isEmbed, workspace]);
+
+  useEffect(() => {
+    if (activeTab === 'members' && (isOpen || isEmbed) && workspace) {
+      loadMembers();
+    }
+  }, [activeTab, isOpen, isEmbed, workspace]);
 
   if (!isEmbed && (!isOpen || !workspace)) return null;
   if (isEmbed && !workspace) return null;
@@ -252,11 +282,12 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
     try {
       const res = await apiClient.post<{ success: boolean; data: Member }>(
         `/api/workspaces/${workspace.id}/members`,
-        { email: inviteEmail.trim(), role: inviteRole }
+        { email: inviteEmail.trim(), role: inviteRole, groupId: inviteGroupId || undefined }
       );
       if (res.success && res.data) {
         setMembers(prev => [...prev, res.data]);
         setInviteEmail('');
+        setInviteGroupId('');
         if (fetchSubscription && workspace) {
           fetchSubscription(workspace.id);
         }
@@ -362,8 +393,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
 
 
-  // タブ描画処理
-  const renderMembersTab = () => {
+  const renderGeneralTab = () => {
     return (
       <div className="settings-form-wrapper">
         {/* ワークスペース名変更（管理者のみ） */}
@@ -385,6 +415,25 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
           </form>
         </div>
 
+        {/* ワークスペース削除 */}
+        {isOwner && (
+          <div className="danger-zone">
+            <h3>{t('workspace.dangerZone')}</h3>
+            <p>{t('workspace.deleteText')}</p>
+            <button onClick={handleDeleteWorkspaceClick} type="button" className="danger-btn">
+              <Trash2 size={16} />
+              <span>{t('workspace.deleteBtn')}</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // タブ描画処理
+  const renderMembersTab = () => {
+    return (
+      <div className="settings-form-wrapper">
         {/* 招待（オーナーのみ） */}
         {isOwner && (
           <div className="settings-section" style={{ paddingBottom: '20px', borderBottom: '1px solid var(--border-light)' }}>
@@ -428,8 +477,22 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                   >
                     <option value="member">{t('workspace.role.member')}</option>
                     <option value="guest">{t('workspace.role.guest')}</option>
-                    <option value="group_admin">{t('workspace.role.groupAdmin')}</option>
                     <option value="owner">{t('workspace.role.owner')}</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ flex: 1.5, marginBottom: 0 }}>
+                  <label>{t('error') === 'Error' ? 'Initial Group' : '初期所属グループ'}</label>
+                  <select 
+                    value={inviteGroupId} 
+                    onChange={(e) => setInviteGroupId(e.target.value)} 
+                    className="form-input"
+                    style={{ background: 'var(--bg-input)', border: '1px solid var(--border-light)', color: 'var(--text-primary)' }}
+                    disabled={addingMember}
+                  >
+                    <option value="">{t('error') === 'Error' ? 'None' : 'なし'}</option>
+                    {groups.map(g => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
                   </select>
                 </div>
                 <button type="submit" className="submit-btn" style={{ padding: '11px 20px', display: 'flex', alignItems: 'center', gap: '6px' }} disabled={addingMember}>
@@ -450,6 +513,9 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
               {members.map((member) => {
                 const modifiable = canModifyMember(member);
+                const isGroupAdminMember = member.role === 'group_admin';
+                const memberGroups = groups.filter(g => member.groupIds?.includes(g.id));
+
                 return (
                   <div key={member.userId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', borderRadius: '6px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -463,10 +529,65 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span style={{ fontSize: '13px', fontWeight: 500 }}>{member.displayName}</span>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{member.email}</span>
+                        
+                        {/* 所属グループ一覧表示 */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                          {memberGroups.length === 0 ? (
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                              {t('error') === 'Error' ? 'No Group' : 'グループ未所属'}
+                            </span>
+                          ) : (
+                            memberGroups.map(g => {
+                              const isLeaderOfThis = member.leaderGroupIds?.includes(g.id);
+                              return (
+                                <span 
+                                  key={g.id} 
+                                  style={{ 
+                                    fontSize: '11px', 
+                                    background: isLeaderOfThis ? 'rgba(245, 158, 11, 0.15)' : 'var(--border-light)', 
+                                    color: isLeaderOfThis ? '#d97706' : 'var(--text-primary)', 
+                                    border: isLeaderOfThis ? '1px solid rgba(245, 158, 11, 0.3)' : '1px solid transparent',
+                                    padding: '1px 6px', 
+                                    borderRadius: '10px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center'
+                                  }}
+                                >
+                                  {g.name}{isLeaderOfThis ? (t('error') === 'Error' ? ' (Leader)' : ' (リーダー)') : ''}
+                                </span>
+                              );
+                            })
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {modifiable ? (
+                      {/* DM開始ボタン */}
+                      {member.userId !== apiClient.getUserId() && onCreateDm && (
+                        <button 
+                          onClick={() => {
+                            const dmName = member.displayName;
+                            onCreateDm([member.userId, apiClient.getUserId() || ''], dmName);
+                          }} 
+                          className="submit-btn" 
+                          style={{ 
+                            padding: '6px', 
+                            borderRadius: '4px', 
+                            background: 'rgba(16, 185, 129, 0.1)', 
+                            color: '#10b981', 
+                            border: 'none', 
+                            margin: 0, 
+                            height: 'auto', 
+                            display: 'flex', 
+                            alignItems: 'center' 
+                          }} 
+                          title={t('error') === 'Error' ? 'Start DM' : 'DMを開始'}
+                        >
+                          <MessageSquare size={14} />
+                        </button>
+                      )}
+
+                      {modifiable && !isGroupAdminMember ? (
                         <select 
                           value={member.role} 
                           onChange={(e) => handleRoleChange(member.userId, e.target.value as any)} 
@@ -474,14 +595,17 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                           style={{ padding: '4px 8px', fontSize: '12px', width: 'auto', background: 'var(--bg-input)', color: 'var(--text-primary)', border: '1px solid var(--border-light)' }}
                         >
                           {isOwner && <option value="owner">{t('workspace.role.owner')}</option>}
-                          <option value="group_admin">{t('workspace.role.groupAdmin')}</option>
                           <option value="member">{t('workspace.role.member')}</option>
                           <option value="guest">{t('workspace.role.guest')}</option>
                         </select>
                       ) : (
                         <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Shield size={12} />
-                          <span>{member.role.toUpperCase()}</span>
+                          <span>
+                            {member.role === 'group_admin' 
+                              ? (t('error') === 'Error' ? 'GROUP ADMIN' : 'グループ管理者') 
+                              : member.role.toUpperCase()}
+                          </span>
                         </span>
                       )}
 
@@ -503,48 +627,11 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
             </div>
           )}
         </div>
-
-        {/* ワークスペース削除 */}
-        {isOwner && (
-          <div className="danger-zone">
-            <h3>{t('workspace.dangerZone')}</h3>
-            <p>{t('workspace.deleteText')}</p>
-            <button onClick={handleDeleteWorkspaceClick} type="button" className="danger-btn">
-              <Trash2 size={16} />
-              <span>{t('workspace.deleteBtn')}</span>
-            </button>
-          </div>
-        )}
       </div>
     );
   };
 
-  const renderStatusesTab = () => {
-    return (
-      <div className="settings-form-wrapper">
-        <div className="settings-section">
-          <h3 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '4px' }}>{t('workspace.statusTitle')}</h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>{t('workspace.statusHelp')}</p>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
-            <input type="text" value={newStatusName} onChange={(e) => setNewStatusName(e.target.value)} placeholder="todo" className="form-input" style={{ flex: 1, marginBottom: 0 }} />
-            <button type="button" onClick={handleAddStatus} className="submit-btn" style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '10px 16px' }}><Plus size={14} /><span>{t('workspace.add')}</span></button>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {customStatuses.map((status, index) => (
-              <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', borderRadius: '6px' }}>
-                <span style={{ fontSize: '13px' }}>{status}</span>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => handleMoveStatus(index, 'up')} disabled={index === 0} style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer' }}><ArrowUp size={14} /></button>
-                  <button onClick={() => handleMoveStatus(index, 'down')} disabled={index === customStatuses.length - 1} style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer' }}><ArrowDown size={14} /></button>
-                  <button onClick={() => handleRemoveStatus(status)} style={{ padding: '6px', border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--accent-danger)' }}><Trash2 size={14} /></button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
+
 
 
 
@@ -568,27 +655,33 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
       {/* タブ切り替えバー */}
       <div className="settings-tabs">
-        <button className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>
-          <Shield size={16} />
-          <span>{t('workspace.members')}</span>
-        </button>
-        {canAccessSettings && (
-          <button className={`tab-btn ${activeTab === 'groups' ? 'active' : ''}`} onClick={() => setActiveTab('groups')}>
-            <Users size={16} />
-            <span>{t('workspace.groups')}</span>
-          </button>
-        )}
-        {isOwner && (
-          <button className={`tab-btn ${activeTab === 'statuses' ? 'active' : ''}`} onClick={() => setActiveTab('statuses')}>
-            <Sliders size={16} />
-            <span>{t('workspace.statuses')}</span>
-          </button>
-        )}
-        {isOwner && !isSaasMode && (
-          <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
-            <Mail size={16} />
-            <span>{t('workspace.smtp')}</span>
-          </button>
+        {isMembersOnly ? (
+          <>
+            <button className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>
+              <Shield size={16} />
+              <span>{t('workspace.members')}</span>
+            </button>
+            <button className={`tab-btn ${activeTab === 'groups' ? 'active' : ''}`} onClick={() => setActiveTab('groups')}>
+              <Users size={16} />
+              <span>{t('workspace.groups')}</span>
+            </button>
+          </>
+        ) : (
+          <>
+            {isOwner && (
+              <button className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>
+                <Sliders size={16} />
+                <span>{t('workspace.general')}</span>
+              </button>
+            )}
+
+            {isOwner && !isSaasMode && (
+              <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
+                <Mail size={16} />
+                <span>{t('workspace.smtp')}</span>
+              </button>
+            )}
+          </>
         )}
         {extraTabs && extraTabs.map(tab => {
           if (tab.visible === false) return null;
@@ -604,10 +697,10 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
       <div className="settings-body" style={{ flex: 1, minHeight: 0 }}>
         {activeTab === 'members' ? (
           renderMembersTab()
+        ) : activeTab === 'general' ? (
+          renderGeneralTab()
         ) : activeTab === 'groups' ? (
-          <WorkspaceGroupsTab workspaceId={workspace!.id} workspaceMembers={members} currentUserRole={currentUserRole} currentUserLedGroups={currentUserLedGroups} />
-        ) : activeTab === 'statuses' ? (
-          renderStatusesTab()
+          <WorkspaceGroupsTab workspaceId={workspace!.id} workspaceMembers={members} currentUserRole={currentUserRole} currentUserLedGroups={currentUserLedGroups} onRefreshMembers={loadMembers} />
         ) : activeTab === 'smtp' ? (
           isOwner && !isSaasMode && <SmtpSettingsTab />
         ) : (
@@ -652,27 +745,33 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
           </div>
 
           <div className="settings-tabs" style={{ marginTop: 0 }}>
-            <button className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>
-              <Shield size={16} />
-              <span>{t('workspace.members')}</span>
-            </button>
-            {canAccessSettings && (
-              <button className={`tab-btn ${activeTab === 'groups' ? 'active' : ''}`} onClick={() => setActiveTab('groups')}>
-                <Users size={16} />
-                <span>{t('workspace.groups')}</span>
-              </button>
-            )}
-            {isOwner && (
-              <button className={`tab-btn ${activeTab === 'statuses' ? 'active' : ''}`} onClick={() => setActiveTab('statuses')}>
-                <Sliders size={16} />
-                <span>{t('workspace.statuses')}</span>
-              </button>
-            )}
-            {isOwner && !isSaasMode && (
-              <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
-                <Mail size={16} />
-                <span>{t('workspace.smtp')}</span>
-              </button>
+            {isMembersOnly ? (
+              <>
+                <button className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>
+                  <Shield size={16} />
+                  <span>{t('workspace.members')}</span>
+                </button>
+                <button className={`tab-btn ${activeTab === 'groups' ? 'active' : ''}`} onClick={() => setActiveTab('groups')}>
+                  <Users size={16} />
+                  <span>{t('workspace.groups')}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                {isOwner && (
+                  <button className={`tab-btn ${activeTab === 'general' ? 'active' : ''}`} onClick={() => setActiveTab('general')}>
+                    <Sliders size={16} />
+                    <span>{t('workspace.general')}</span>
+                  </button>
+                )}
+
+                {isOwner && !isSaasMode && (
+                  <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
+                    <Mail size={16} />
+                    <span>{t('workspace.smtp')}</span>
+                  </button>
+                )}
+              </>
             )}
             {extraTabs && extraTabs.map(tab => {
               if (tab.visible === false) return null;
@@ -687,10 +786,11 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
           <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {activeTab === 'members' && renderMembersTab()}
+            {activeTab === 'general' && renderGeneralTab()}
             {activeTab === 'groups' && workspace && (
-              <WorkspaceGroupsTab workspaceId={workspace.id} workspaceMembers={members} currentUserRole={currentUserRole} currentUserLedGroups={currentUserLedGroups} />
+              <WorkspaceGroupsTab workspaceId={workspace.id} workspaceMembers={members} currentUserRole={currentUserRole} currentUserLedGroups={currentUserLedGroups} onRefreshMembers={loadMembers} />
             )}
-            {activeTab === 'statuses' && renderStatusesTab()}
+
             {activeTab === 'smtp' && workspace && !isSaasMode && <SmtpSettingsTab />}
             {extraTabs && extraTabs.find(tab => tab.id === activeTab)?.content}
           </div>

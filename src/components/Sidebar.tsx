@@ -1,6 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Hash, Plus, Settings, Inbox, User, LogOut, MoreHorizontal, Lock, MessageCircle, Globe, CheckSquare, ToggleLeft, ChevronRight, ChevronLeft, BookOpen, Image, Sun, Moon, Home, Menu, Star, Search } from 'lucide-react';
+import { Hash, Plus, Settings, Inbox, User, LogOut, MoreHorizontal, Lock, MessageCircle, Globe, CheckSquare, ToggleLeft, ChevronRight, ChevronLeft, BookOpen, Image, Sun, Moon, Home, Menu, Star, Search, Users } from 'lucide-react';
 import { useLanguage } from '../utils/i18n';
+
+interface Group {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  memberCount: number;
+}
 
 interface Channel {
   id: string;
@@ -24,8 +31,8 @@ interface SidebarProps {
   channels: Channel[];
   activeChannelId: string | null;
   setActiveChannelId: (id: string | null) => void;
-  activeView: 'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search';
-  setActiveView: (view: 'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search') => void;
+  activeView: 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members';
+  setActiveView: (view: 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members') => void;
   unreadNotificationsCount: number;
   channelUnreads: Record<string, boolean>;
   currentUser: {
@@ -37,12 +44,13 @@ interface SidebarProps {
   } | null;
   currentUserRole: 'owner' | 'group_admin' | 'member' | 'guest';
   currentUserLedGroups: string[];
+  groups?: Group[];
   onLogout?: () => void;
   onOpenUserProfile?: () => void;
   onOpenWorkspaceMembers?: (initialTab?: 'members' | 'groups' | 'statuses' | 'smtp' | 'subscription') => void;
   onOpenChannelSettings?: (channel: Channel) => void;
   onOpenCreateWorkspace?: () => void;
-  onOpenCreateChannel?: () => void;
+  onOpenCreateChannel?: (defaultGroupId?: string) => void;
   onOpenBrowseChannels?: () => void;
   onOpenStartDm?: () => void;
   isCollapsed: boolean;
@@ -76,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   currentUser,
   currentUserRole,
   currentUserLedGroups,
+  groups = [],
   onLogout,
   onOpenUserProfile,
   onOpenWorkspaceMembers,
@@ -95,6 +104,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [isDmsExpanded, setIsDmsExpanded] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroupExpand = (groupId: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupId]: !prev[groupId]
+    }));
+  };
 
   // ポップオーバー外クリック（Click Outside）検知用のRef
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
@@ -174,18 +191,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* グローバル機能 (ホーム、受信箱) - ゲスト以外 */}
         {currentUserRole !== 'guest' && (
           <ul className="channel-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', padding: isCollapsed ? '0 4px' : '0 8px' }}>
-            {/* ホーム (ダッシュボード) */}
-            <li
-              className={`channel-item ${activeView === 'dashboard' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveView('dashboard');
-                setActiveChannelId(null);
-              }}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '8px', cursor: 'pointer', paddingLeft: isCollapsed ? '0' : '12px', paddingRight: isCollapsed ? '0' : '12px' }}
-            >
-              <Home size={16} style={{ flexShrink: 0 }} />
-              {!isCollapsed && <span style={{ fontWeight: 'bold' }}>{t('error') === 'Error' ? 'Home' : 'ホーム'}</span>}
-            </li>
+
 
             {/* 受信箱 */}
             <li
@@ -286,54 +292,78 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </button>
                 )}
               </div>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <select
-                  value={activeWorkspaceId || ''}
-                  onChange={(e) => setActiveWorkspaceId(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 32px 8px 12px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    color: 'var(--text-primary)',
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-light)',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    appearance: 'none',
-                    outline: 'none',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {workspaces.map((ws: any) => (
-                    <option key={ws.id} value={ws.id}>
-                      {ws.name} {ws.unreadCount > 0 ? '🔴' : ''}
-                    </option>
-                  ))}
-                </select>
-                <div style={{ position: 'absolute', right: '12px', pointerEvents: 'none', display: 'flex', alignItems: 'center', color: 'var(--text-muted)', fontSize: '10px' }}>
-                  ▼
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+                <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <select
+                    value={activeWorkspaceId || ''}
+                    onChange={(e) => setActiveWorkspaceId(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '8px 32px 8px 12px',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      color: 'var(--text-primary)',
+                      background: 'var(--bg-secondary)',
+                      border: '1px solid var(--border-light)',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      appearance: 'none',
+                      outline: 'none',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {workspaces.map((ws: any) => (
+                      <option key={ws.id} value={ws.id}>
+                        {ws.name} {ws.unreadCount > 0 ? '🔴' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ position: 'absolute', right: '12px', pointerEvents: 'none', display: 'flex', alignItems: 'center', color: 'var(--text-muted)', fontSize: '10px' }}>
+                    ▼
+                  </div>
+                  {(() => {
+                    const hasOtherUnread = workspaces.some((ws: any) => ws.id !== activeWorkspaceId && ws.unreadCount > 0);
+                    if (hasOtherUnread) {
+                      return (
+                        <span style={{
+                          position: 'absolute',
+                          top: '-4px',
+                          left: '-4px',
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--accent-danger)',
+                          border: '1.5px solid var(--bg-sidebar)',
+                          boxShadow: '0 0 4px var(--accent-danger)'
+                        }}></span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
-                {(() => {
-                  const hasOtherUnread = workspaces.some((ws: any) => ws.id !== activeWorkspaceId && ws.unreadCount > 0);
-                  if (hasOtherUnread) {
-                    return (
-                      <span style={{
-                        position: 'absolute',
-                        top: '-4px',
-                        left: '-4px',
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        backgroundColor: 'var(--accent-danger)',
-                        border: '1.5px solid var(--bg-sidebar)',
-                        boxShadow: '0 0 4px var(--accent-danger)'
-                      }}></span>
-                    );
-                  }
-                  return null;
-                })()}
+
+                {/* ワークスペース設定ボタン（通常表示時） */}
+                {onOpenWorkspaceMembers && (currentUserRole === 'owner' || currentUserRole === 'group_admin') && (
+                  <button
+                    onClick={() => onOpenWorkspaceMembers('general')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      padding: '6px',
+                      marginLeft: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0
+                    }}
+                    title={t('sidebar.settings')}
+                  >
+                    <Settings size={18} />
+                  </button>
+                )}
               </div>
             </div>
           ) : (
@@ -404,8 +434,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }}
                 >
                   {/* A. 上部: ワークスペース名を表示 */}
-                  <div style={{ padding: '0 12px 8px', fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-light)', marginBottom: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {activeWorkspace?.name || 'Workspace'}
+                  <div style={{ padding: '0 12px 8px', borderBottom: '1px solid var(--border-light)', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      {activeWorkspace?.name || 'Workspace'}
+                    </span>
+                    {onOpenWorkspaceMembers && (currentUserRole === 'owner' || currentUserRole === 'group_admin') && (
+                      <button
+                        onClick={() => {
+                          onOpenWorkspaceMembers('general');
+                          setShowWorkspaceMenu(false);
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                        title={t('sidebar.settings')}
+                      >
+                        <Settings size={14} />
+                      </button>
+                    )}
                   </div>
 
                   {/* B. その下: 各機能のアイコンを横並びで配置 */}
@@ -482,18 +536,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         </button>
                       )}
 
-                      {/* 設定 / メンバー */}
+                      {/* メンバー */}
                       {onOpenWorkspaceMembers && (
                         <button
                           onClick={() => {
-                            setActiveView('workspace_settings');
-                            setActiveChannelId(null);
+                            onOpenWorkspaceMembers('members');
                             setShowWorkspaceMenu(false);
                           }}
                           style={{
-                            background: activeView === 'workspace_settings' ? 'var(--bg-active)' : 'transparent',
+                            background: activeView === 'workspace_members' ? 'var(--bg-active)' : 'transparent',
                             border: 'none',
-                            color: activeView === 'workspace_settings' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                            color: activeView === 'workspace_members' ? 'var(--accent-primary)' : 'var(--text-muted)',
                             cursor: 'pointer',
                             padding: '6px',
                             borderRadius: '4px',
@@ -503,9 +556,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           }}
                           title={t('sidebar.members')}
                         >
-                          <Settings size={18} />
+                          <Users size={18} />
                         </button>
                       )}
+
+
                     </div>
                   )}
 
@@ -674,14 +729,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </button>
               )}
 
-              {/* 設定 / メンバー */}
+              {/* メンバー */}
               {onOpenWorkspaceMembers && (
                 <button
                   onClick={() => {
-                    setActiveView('workspace_settings');
+                    setActiveView('workspace_members');
                     setActiveChannelId(null);
                   }}
-                  className={`sidebar-icon-btn ${activeView === 'workspace_settings' ? 'active' : ''}`}
+                  className={`sidebar-icon-btn ${activeView === 'workspace_members' ? 'active' : ''}`}
                   style={{
                     width: '36px',
                     height: '36px',
@@ -689,18 +744,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: activeView === 'workspace_settings' ? 'var(--bg-active)' : 'transparent',
-                    border: '1px solid ' + (activeView === 'workspace_settings' ? 'var(--border-focus)' : 'var(--border-light)'),
-                    color: activeView === 'workspace_settings' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                    background: activeView === 'workspace_members' ? 'var(--bg-active)' : 'transparent',
+                    border: '1px solid ' + (activeView === 'workspace_members' ? 'var(--border-focus)' : 'var(--border-light)'),
+                    color: activeView === 'workspace_members' ? 'var(--accent-primary)' : 'var(--text-muted)',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     outline: 'none',
                   }}
                   title={t('sidebar.members')}
                 >
-                  <Settings size={18} />
+                  <Users size={18} />
                 </button>
               )}
+
+
             </div>
           ) : (
             null
@@ -884,7 +941,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             )}
             {(isChannelsExpanded || isCollapsed) && (
               <ul className="channel-list">
-              {channels.filter(c => c.type !== 'dm' && !c.isStarred).map((channel) => {
+              {channels.filter(c => c.type !== 'dm' && !c.isStarred && !c.groupId).map((channel) => {
                 const isActive = channel.id === activeChannelId;
                 const hasUnread = channelUnreads[channel.id];
                 
@@ -1022,6 +1079,202 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </ul>
             )}
           </div>
+
+          {/* グループセクション一覧 */}
+          {groups.map((group) => {
+            const isExpanded = expandedGroups[group.id] || false;
+            const groupChannels = channels.filter(c => c.type !== 'dm' && !c.isStarred && c.groupId === group.id);
+            
+            const isGroupLeader = isGroupAdmin && currentUserLedGroups.includes(group.id);
+            const canAddGroupChannel = isOwner || isGroupLeader;
+
+            return (
+              <div key={group.id} className="sidebar-section" style={{ padding: isCollapsed ? '0 4px' : '0 8px', marginBottom: '8px' }}>
+                {!isCollapsed ? (
+                  <div 
+                    className="section-title"
+                    onClick={() => toggleGroupExpand(group.id)}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+                      <ChevronRight 
+                        size={14} 
+                        style={{ 
+                          transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s ease',
+                          color: 'var(--text-muted)',
+                          flexShrink: 0
+                        }} 
+                      />
+                      {group.isPrivate ? (
+                        <Lock size={13} style={{ color: 'var(--accent-warning, #f59e0b)', flexShrink: 0 }} />
+                      ) : (
+                        <Users size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                      )}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{group.name}</span>
+                    </div>
+                    {currentUserRole !== 'guest' && canAddGroupChannel && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="input-icon-btn"
+                          title={t('error') === 'Error' ? 'Add channel to this group' : 'このグループにチャンネルを追加'}
+                          onClick={() => onOpenCreateChannel?.(group.id)}
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ borderBottom: '1px solid var(--border-light)', margin: '8px 0' }} />
+                )}
+                {(isExpanded || isCollapsed) && (
+                  <ul className="channel-list">
+                    {groupChannels.map((channel) => {
+                      const isActive = channel.id === activeChannelId;
+                      const hasUnread = channelUnreads[channel.id];
+
+                      const canEditChannel = (): boolean => {
+                        if (isOwner) return true;
+                        if (isGroupAdmin && channel.groupId) {
+                          return currentUserLedGroups.includes(channel.groupId);
+                        }
+                        return false;
+                      };
+
+                      return (
+                        <li
+                          key={channel.id}
+                          className={`channel-item ${(isActive && activeView === 'chat') ? 'active' : ''}`}
+                          onClick={() => {
+                            setActiveChannelId(channel.id);
+                            setActiveView('chat');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: isCollapsed ? 'center' : 'space-between',
+                            paddingLeft: isCollapsed ? '0' : '16px',
+                            paddingRight: isCollapsed ? '0' : '8px',
+                            fontWeight: hasUnread ? '700' : '500',
+                            color: hasUnread ? 'var(--text-primary)' : 'var(--text-muted)',
+                            position: 'relative'
+                          }}
+                          title={isCollapsed ? channel.name : undefined}
+                        >
+                          {isCollapsed ? (
+                            <div 
+                              className="channel-initial-avatar" 
+                              style={{
+                                width: '24px',
+                                height: '24px',
+                                borderRadius: '50%',
+                                background: isActive ? 'var(--accent-primary)' : 'var(--bg-panel)',
+                                color: isActive ? '#fff' : 'var(--text-muted)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                border: isActive ? '1px solid var(--accent-primary)' : '1px solid var(--border-light)'
+                              }}
+                            >
+                              {channel.name.substring(0, 1).toUpperCase()}
+                              {channel.unreadCount !== undefined && channel.unreadCount > 0 && !isActive ? (
+                                <span className="channel-unread-badge collapsed">
+                                  {channel.unreadCount > 9 ? '9+' : channel.unreadCount}
+                                </span>
+                              ) : (hasUnread && !isActive && (
+                                <span style={{
+                                  position: 'absolute',
+                                  top: '2px',
+                                  right: '2px',
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  background: 'var(--primary-color)',
+                                  border: '1px solid var(--bg-sidebar)'
+                                }}></span>
+                              ))}
+                            </div>
+                          ) : (
+                            <>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                {channel.isPrivate ? (
+                                  <Lock size={16} style={{ flexShrink: 0, opacity: 0.7 }} />
+                                ) : (
+                                  <Hash size={16} style={{ flexShrink: 0 }} />
+                                )}
+                                <span>{channel.name}</span>
+                              </div>
+                              
+                              {channel.unreadCount !== undefined && channel.unreadCount > 0 && !isActive ? (
+                                <span className="channel-unread-badge">
+                                  {channel.unreadCount > 99 ? '99+' : channel.unreadCount}
+                                </span>
+                              ) : (hasUnread && !isActive && (
+                                <span style={{
+                                  width: '6px',
+                                  height: '6px',
+                                  borderRadius: '50%',
+                                  background: 'var(--primary-color)',
+                                  flexShrink: 0,
+                                  marginRight: '8px'
+                                }}></span>
+                              ))}
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onToggleStarChannel?.(channel.id, !!channel.isStarred);
+                                }}
+                                className={`channel-star-btn ${channel.isStarred ? 'starred' : ''}`}
+                                style={{ 
+                                  background: 'none', 
+                                  border: 'none', 
+                                  color: channel.isStarred ? 'var(--accent-warning, #f59e0b)' : 'var(--text-muted)', 
+                                  cursor: 'pointer', 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  justifyContent: 'center',
+                                  padding: '4px',
+                                  marginLeft: '4px'
+                                }}
+                                title={channel.isStarred ? "お気に入りから外す" : "お気に入りに追加"}
+                              >
+                                <Star size={14} fill={channel.isStarred ? "var(--accent-warning, #f59e0b)" : "none"} />
+                              </button>
+
+                              {canEditChannel() && onOpenChannelSettings && (
+                                <button
+                                  className="channel-menu-btn"
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onOpenChannelSettings(channel);
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', opacity: isActive ? 1 : 0, transition: 'opacity 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  title="チャンネル設定"
+                                >
+                                  <MoreHorizontal size={14} />
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </li>
+                      );
+                    })}
+                    {!isCollapsed && groupChannels.length === 0 && (
+                      <li style={{ padding: '6px 16px', fontSize: '11px', color: 'var(--text-disabled)', listStyle: 'none' }}>
+                        {t('error') === 'Error' ? 'No channels' : 'チャンネルがありません'}
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
 
           {/* ダイレクトメッセージセクション - ゲスト以外 */}
           {currentUserRole !== 'guest' && subscription?.dmEnabled !== false && (

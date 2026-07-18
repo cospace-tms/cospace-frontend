@@ -91,13 +91,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(() => {
     return localStorage.getItem(`cohive_last_workspace_${currentUser.id}`) || initialWorkspaceId;
   });
-  const [activeView, setActiveView] = useState<'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search'>(() => {
+  const [activeView, setActiveView] = useState<'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members'>(() => {
     const saved = localStorage.getItem(`cohive_last_view_${currentUser.id}`);
-    const validViews = ['dashboard', 'chat', 'items', 'inbox', 'workspace_doc', 'media', 'workspace_settings', 'search'];
+    const validViews = ['chat', 'items', 'inbox', 'workspace_doc', 'media', 'workspace_settings', 'search', 'workspace_members'];
     if (saved && validViews.includes(saved)) {
       return saved as any;
     }
-    return 'dashboard';
+    return 'chat';
   });
 
   // ダッシュボード用ステートと取得関数
@@ -132,30 +132,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [limitModalType, setLimitModalType] = useState<'channel' | 'workspace' | 'member' | 'storage' | null>(null);
   const [limitModalValue, setLimitModalValue] = useState<number | string | undefined>(undefined);
 
-  const [dashboardTasks, setDashboardTasks] = useState<DashboardTask[]>([]);
-  const [dashboardActivities, setDashboardActivities] = useState<DashboardActivity[]>([]);
-  const [loadingDashboard, setLoadingDashboard] = useState<boolean>(false);
 
-  const loadDashboardData = useCallback(async (silent = false) => {
-    if (currentUserRole === 'guest') return;
-    if (!silent) setLoadingDashboard(true);
-    try {
-      const [tasksRes, actRes] = await Promise.all([
-        apiClient.get<{ success: boolean; data: DashboardTask[] }>('/api/items'),
-        apiClient.get<{ success: boolean; data: DashboardActivity[] }>('/api/activities'),
-      ]);
-      if (tasksRes.success && Array.isArray(tasksRes.data)) {
-        setDashboardTasks(tasksRes.data);
-      }
-      if (actRes.success && Array.isArray(actRes.data)) {
-        setDashboardActivities(actRes.data);
-      }
-    } catch (err) {
-      console.error('Failed to load dashboard data:', err);
-    } finally {
-      if (!silent) setLoadingDashboard(false);
-    }
-  }, [currentUserRole]);
 
   const [channels, setChannels] = useState<Channel[]>([
     { id: initialChannelId, name: 'general', isPrivate: false }
@@ -180,10 +157,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   // 個別モーダルの開閉状態
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isWorkspaceSettingsModalOpen, setIsWorkspaceSettingsModalOpen] = useState(false);
   const [selectedChannelToEdit, setSelectedChannelToEdit] = useState<Channel | null>(null);
   const [isStartDmOpen, setIsStartDmOpen] = useState(false);
   const [isCreateWorkspaceOpen, setIsCreateWorkspaceOpen] = useState(false);
   const [isCreateChannelOpen, setIsCreateChannelOpen] = useState(false);
+  const [defaultGroupIdForNewChannel, setDefaultGroupIdForNewChannel] = useState<string | undefined>(undefined);
   const [isBrowseChannelsOpen, setIsBrowseChannelsOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
     return window.innerWidth <= 768;
@@ -220,6 +199,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([]);
   const [channelMembers, setChannelMembers] = useState<any[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+
+  const fetchGroups = useCallback(async (wsId: string) => {
+    try {
+      const res = await apiClient.get<{ success: boolean; data: any[] }>(
+        `/api/workspaces/${wsId}/groups`
+      );
+      if (res.success && Array.isArray(res.data)) {
+        setGroups(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch groups:', err);
+    }
+  }, []);
 
   // 1. ユーザープロフィールのマッピング (useChat hook 用)
   const chatUser: User = {
@@ -384,7 +377,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
         // ゲストの場合の強制ビュー切り替え
         if (res.role === 'guest') {
-          const guestDeniedViews = ['dashboard', 'workspace_doc', 'workspace_settings', 'items', 'media', 'inbox'];
+          const guestDeniedViews = ['workspace_doc', 'workspace_settings', 'items', 'media', 'inbox', 'workspace_members'];
           setActiveView(prev => guestDeniedViews.includes(prev) ? 'chat' : prev);
         }
       }
@@ -427,7 +420,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     const loadChannelsAndMembers = async () => {
       setLoadingWorkspace(true);
       try {
-        const [subRes, chanResponse, memResponse] = await Promise.all([
+        const [subRes, chanResponse, memResponse, groupsResponse] = await Promise.all([
           apiClient.getWorkspaceSubscription(activeWorkspaceId).catch(err => {
             console.error("Failed to fetch subscription status:", err);
             return null;
@@ -443,6 +436,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             `/api/workspaces/${activeWorkspaceId}/members`
           ).catch(err => {
             console.warn('Workspace members load error:', err);
+            return null;
+          }),
+          apiClient.get<{ success: boolean; data: any[] }>(
+            `/api/workspaces/${activeWorkspaceId}/groups`
+          ).catch(err => {
+            console.warn('Workspace groups load error:', err);
             return null;
           })
         ]);
@@ -469,6 +468,10 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
         if (memResponse && memResponse.success && Array.isArray(memResponse.data)) {
           setWorkspaceMembers(memResponse.data);
+        }
+
+        if (groupsResponse && groupsResponse.success && Array.isArray(groupsResponse.data)) {
+          setGroups(groupsResponse.data);
         }
       } catch (err) {
         console.error('Failed to load workspace data:', err);
@@ -621,9 +624,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     // 起動時 / 画面切り替え時に最新の通知を取得
     loadNotifications();
 
-    // ホーム画面を開いたときは、その瞬間の最新データをロードする
-    if (activeView === 'dashboard') {
-      loadDashboardData(false);
+    if (activeWorkspaceId) {
+      fetchGroups(activeWorkspaceId);
     }
 
     const pollWorkspaces = async () => {
@@ -652,11 +654,20 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             setChannels(res.data);
           }
         }).catch((err) => console.error('Failed to poll channels:', err));
+
+        // グループも裏で再フェッチする
+        apiClient.get<{ success: boolean; data: any[] }>(
+          `/api/workspaces/${activeWorkspaceId}/groups`
+        ).then((res) => {
+          if (res.success && Array.isArray(res.data)) {
+            setGroups(res.data);
+          }
+        }).catch((err) => console.error('Failed to poll groups:', err));
       }
     }, 10000); // 10秒おき
 
     return () => clearInterval(interval);
-  }, [activeWorkspaceId, activeView, loadNotifications, loadDashboardData]);
+  }, [activeWorkspaceId, activeView, loadNotifications]);
 
   // タブのタイトルを動的に更新（未読通知がある場合は件数を表示）
   useEffect(() => {
@@ -720,10 +731,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   }, []);
 
-  const handleSelectWorkspaceFromDashboard = (workspaceId: string) => {
-    setActiveWorkspaceId(workspaceId);
-    setActiveView('chat');
-  };
+
 
   // ------------------------------------------------------------
 
@@ -936,6 +944,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           }}
           channels={channels}
           activeChannelId={activeChannelId}
+          groups={groups}
           setActiveChannelId={(id) => {
             setActiveChannelId(id);
           }}
@@ -950,8 +959,12 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           onOpenUserProfile={() => setIsProfileOpen(true)}
           onOpenWorkspaceMembers={(initialTab = 'members') => {
             setWorkspaceSettingsInitialTab(initialTab);
-            setActiveView('workspace_settings');
-            setActiveChannelId(null);
+            if (initialTab === 'members' || initialTab === 'groups') {
+              setActiveView('workspace_members');
+              setActiveChannelId(null);
+            } else {
+              setIsWorkspaceSettingsModalOpen(true);
+            }
           }}
           onOpenChannelSettings={(channel) => setSelectedChannelToEdit(channel)}
           onOpenCreateWorkspace={() => {
@@ -966,12 +979,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             }
             setIsCreateWorkspaceOpen(true);
           }}
-          onOpenCreateChannel={() => {
+          onOpenCreateChannel={(defaultGroupId) => {
             if (subscription && subscription.plan === 'free' && subscription.channelUsed >= subscription.channelLimit) {
               setLimitModalType('channel');
               setLimitModalValue(subscription.channelLimit);
               setLimitModalOpen(true);
             } else {
+              setDefaultGroupIdForNewChannel(defaultGroupId);
               setIsCreateChannelOpen(true);
             }
           }}
@@ -991,17 +1005,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         )}
 
         {/* 中央エリアの条件付きレンダリング */}
-        {activeView === 'dashboard' ? (
-          <DashboardArea
-            currentUserId={currentUser.id}
-            workspaces={workspaces}
-            tasks={dashboardTasks}
-            activities={dashboardActivities}
-            loading={loadingDashboard}
-            onSelectWorkspace={handleSelectWorkspaceFromDashboard}
-            onJumpToLink={handleJumpToLink}
-          />
-        ) : activeView === 'workspace_doc' ? (
+        {activeView === 'workspace_doc' ? (
           <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
             <DocumentPanel
               title={t('error') === 'Error' ? `${activeWorkspace?.name || 'Workspace'}'s Document` : `${activeWorkspace?.name || 'ワークスペース'} のドキュメント`}
@@ -1011,7 +1015,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               lockKey={`workspace:${activeWorkspaceId}`}
             />
           </div>
-        ) : activeView === 'workspace_settings' ? (
+        ) : activeView === 'workspace_members' ? (
           <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
             <WorkspaceMembersModal
               workspace={activeWorkspace}
@@ -1022,7 +1026,8 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               isEmbed={true}
               subscription={subscription}
               fetchSubscription={fetchSubscription}
-              initialTab={workspaceSettingsInitialTab}
+              isMembersOnly={true}
+              onCreateDm={handleCreateDm}
               isSaasMode={saas?.isSaasMode}
             />
           </div>
@@ -1036,6 +1041,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             currentUserId={currentUser.id}
             highlightItemId={jumpItemId}
             onClearHighlightItem={() => setJumpItemId(null)}
+            onUpdateWorkspace={handleUpdateWorkspace}
           />
         ) : (activeView === 'media' && subscription?.mediaEnabled !== false) ? (
           <MediaLibraryArea
@@ -1062,6 +1068,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         ) : activeView === 'search' ? (
           <SearchView
             workspaceId={activeWorkspaceId}
+            workspaces={workspaces}
             customEmojis={customEmojis}
             onJumpToMessage={handleJumpToMessage}
             onMenuClick={() => setIsCollapsed(false)}
@@ -1097,6 +1104,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             onToggleLocalPin={toggleLocalPin}
             pollingInfo={pollingInfo}
             currentUserRole={currentUserRole}
+            currentUserLedGroups={currentUserLedGroups}
             workspace={activeWorkspace}
             customEmojis={customEmojis}
             fetchCustomEmojis={() => fetchCustomEmojis(activeWorkspaceId!)}
@@ -1108,6 +1116,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
               setActiveChannelId(null);
             }}
             onCreateDm={handleCreateDm}
+            onRefreshChannelMembers={fetchChannelMembers}
           />
         ) : (
           <div className="no-message-selected" style={{ flex: 1 }}>
@@ -1125,6 +1134,22 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         onUpdateEmail={(newEmail) => onUpdateUser(currentUser.displayName, currentUser.avatarUrl || null, currentUser.language || 'ja', newEmail)}
       />
 
+      {/* ワークスペース設定モーダル（ポップアップ形式） */}
+      <WorkspaceMembersModal
+        isOpen={isWorkspaceSettingsModalOpen}
+        onClose={() => setIsWorkspaceSettingsModalOpen(false)}
+        workspace={activeWorkspace}
+        currentUserRole={currentUserRole}
+        currentUserLedGroups={currentUserLedGroups}
+        onUpdateWorkspace={handleUpdateWorkspace}
+        onDeleteWorkspace={handleDeleteWorkspace}
+        isEmbed={false}
+        subscription={subscription}
+        fetchSubscription={fetchSubscription}
+        isMembersOnly={false}
+        isSaasMode={saas?.isSaasMode}
+      />
+
       {/* チャンネル設定モーダル */}
       <ChannelSettingsModal
         isOpen={!!selectedChannelToEdit}
@@ -1133,7 +1158,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         currentUserRole={currentUserRole}
         currentUserLedGroups={currentUserLedGroups}
         currentUserId={currentUser.id}
-        workspaceMembers={workspaceMembers}
+        currentUserDisplayName={currentUser.displayName}
         onUpdateChannel={handleUpdateChannel}
         onDeleteChannel={handleDeleteChannel}
         onLeaveChannel={handleLeaveChannel}
@@ -1159,9 +1184,13 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       {/* チャンネル新規追加モーダル */}
       <CreateChannelModal
         isOpen={isCreateChannelOpen}
-        onClose={() => setIsCreateChannelOpen(false)}
+        onClose={() => {
+          setIsCreateChannelOpen(false);
+          setDefaultGroupIdForNewChannel(undefined);
+        }}
         workspaceId={activeWorkspaceId}
         onCreateChannel={handleCreateChannel}
+        defaultGroupId={defaultGroupIdForNewChannel}
       />
 
       {/* チャンネルブラウズモーダル */}
@@ -1184,8 +1213,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
           limitValue={limitModalValue}
           onGoToSubscription={() => {
             setWorkspaceSettingsInitialTab('subscription');
-            setActiveView('workspace_settings');
-            setActiveChannelId(null);
+            setIsWorkspaceSettingsModalOpen(true);
           }}
         />
       ) : null}
