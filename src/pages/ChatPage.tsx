@@ -3,7 +3,8 @@ import { Loader } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { ChatArea } from '../components/ChatArea';
 import { ItemsArea } from '../components/ItemsArea';
-import { InboxArea, Notification } from '../components/InboxArea';
+import { InboxArea } from '../components/InboxArea';
+import type { Notification } from '../components/InboxArea';
 import { UserProfileModal } from '../components/UserProfileModal';
 import { ChannelSettingsModal } from '../components/ChannelSettingsModal';
 import { WorkspaceMembersModal } from '../components/WorkspaceMembersModal';
@@ -126,7 +127,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     }
   }, []);
 
-  const [workspaceSettingsInitialTab, setWorkspaceSettingsInitialTab] = useState<'members' | 'groups' | 'statuses' | 'smtp' | 'subscription'>('members');
+  const [workspaceSettingsInitialTab, setWorkspaceSettingsInitialTab] = useState<'members' | 'groups' | 'general' | 'statuses' | 'smtp' | 'subscription'>('members');
 
   const [limitModalOpen, setLimitModalOpen] = useState(false);
   const [limitModalType, setLimitModalType] = useState<'channel' | 'workspace' | 'member' | 'storage' | null>(null);
@@ -1284,6 +1285,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         onUpdateWorkspace={handleUpdateWorkspace}
         onDeleteWorkspace={handleDeleteWorkspace}
         isEmbed={false}
+        initialTab={workspaceSettingsInitialTab}
         subscription={subscription}
         fetchSubscription={fetchSubscription}
         isMembersOnly={false}

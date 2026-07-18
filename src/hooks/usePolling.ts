@@ -249,6 +249,7 @@ export function usePolling({
     intervalTime,
     isActive: isActive && !isIdle,
     isPushEnabled,
+    consecutiveEmptyCount: consecutiveEmptyCount.current,
     triggerImmediatePoll: () => triggerImmediatePoll.current(),
   };
 }

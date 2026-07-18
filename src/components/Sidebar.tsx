@@ -47,7 +47,7 @@ interface SidebarProps {
   groups?: Group[];
   onLogout?: () => void;
   onOpenUserProfile?: () => void;
-  onOpenWorkspaceMembers?: (initialTab?: 'members' | 'groups' | 'statuses' | 'smtp' | 'subscription') => void;
+  onOpenWorkspaceMembers?: (initialTab?: 'members' | 'groups' | 'general' | 'statuses' | 'smtp' | 'subscription') => void;
   onOpenChannelSettings?: (channel: Channel) => void;
   onOpenCreateWorkspace?: () => void;
   onOpenCreateChannel?: (defaultGroupId?: string) => void;
