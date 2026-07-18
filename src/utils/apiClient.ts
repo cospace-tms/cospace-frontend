@@ -319,6 +319,17 @@ export class ApiClient {
     }>(`/api/workspaces/${workspaceId}/subscription`);
     return response.data;
   }
+
+  /**
+   * 未読の通知件数を取得します。
+   */
+  async getUnreadNotificationsCount(): Promise<number> {
+    const response = await this.get<{
+      success: boolean;
+      unreadCount: number;
+    }>("/api/notifications/unread-count");
+    return response.unreadCount;
+  }
 }
 
 // シングルトンインスタンスのエクスポート (Pages Functions のため、デフォルトは同一オリジンの相対パスになります)

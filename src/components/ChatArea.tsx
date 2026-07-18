@@ -67,6 +67,9 @@ interface ChatAreaProps {
   onCreateDm?: (memberIds: string[], name: string) => Promise<void>;
   currentUserLedGroups?: string[];
   onRefreshChannelMembers?: (channelId: string) => Promise<void>;
+  onLoadPastMessages?: () => Promise<void>;
+  hasMorePastMessages?: boolean;
+  loadingPastMessages?: boolean;
 }
 
 export const ChatArea: React.FC<ChatAreaProps> = ({
@@ -101,6 +104,9 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
   onCreateDm,
   currentUserLedGroups = [],
   onRefreshChannelMembers,
+  onLoadPastMessages,
+  hasMorePastMessages = false,
+  loadingPastMessages = false,
 }) => {
   const { t } = useLanguage();
   const isEn = t('error') === 'Error';
@@ -265,6 +271,29 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
     return result;
   }, [customEmojis]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const scrollViewportRef = useRef<HTMLDivElement | null>(null);
+  const prevScrollHeightRef = useRef<number | null>(null);
+
+  // 過去メッセージ追加時のスクロール高さ変化を検知してスクロール位置を調整
+  useEffect(() => {
+    if (scrollViewportRef.current && prevScrollHeightRef.current) {
+      const container = scrollViewportRef.current;
+      const diff = container.scrollHeight - prevScrollHeightRef.current;
+      if (diff > 0) {
+        container.scrollTop = diff;
+      }
+      prevScrollHeightRef.current = null;
+    }
+  }, [messages]);
+
+  // 最上部スクロール検知
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollTop === 0 && hasMorePastMessages && !loadingPastMessages && onLoadPastMessages) {
+      prevScrollHeightRef.current = target.scrollHeight;
+      onLoadPastMessages();
+    }
+  }, [hasMorePastMessages, loadingPastMessages, onLoadPastMessages]);
 
   // チャンネルドキュメント用ステートと処理
   const [showDoc, setShowDoc] = useState(false);
@@ -1350,14 +1379,40 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
             )}
 
             {/* 2. メッセージ表示エリア */}
-            <div className="messages-viewport">
+            <div className="messages-viewport" ref={scrollViewportRef} onScroll={handleScroll}>
               {messages.length === 0 ? (
                 <div className="no-message-selected">
                   <HelpCircle size={48} strokeWidth={1} />
                   <p>{isEn ? 'No messages yet. Start the conversation!' : 'まだメッセージはありません。会話を始めましょう！'}</p>
                 </div>
               ) : (
-                messages.map((msg) => {
+                <>
+                  {hasMorePastMessages && (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '16px 0' }}>
+                      {loadingPastMessages ? (
+                        <Loader className="animate-spin" size={20} style={{ color: 'var(--accent-primary)' }} />
+                      ) : (
+                        <button
+                          onClick={onLoadPastMessages}
+                          style={{
+                            background: 'none',
+                            border: '1px solid var(--border-light)',
+                            borderRadius: '4px',
+                            padding: '4px 12px',
+                            fontSize: '12px',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            transition: 'border-color 0.2s',
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--accent-primary)'}
+                          onMouseOut={(e) => e.currentTarget.style.borderColor = 'var(--border-light)'}
+                        >
+                          {isEn ? 'Load older messages' : '過去のメッセージを読み込む'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {messages.map((msg) => {
                   const isSelf = msg.userId === currentUserId;
                   return (
                     <div key={msg.id} id={`message-${msg.id}`} className={`message-card ${isSelf ? 'self' : ''} ${msg.isPinned ? 'pinned' : ''}`}>
@@ -1656,6 +1711,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                     </div>
                   );
                 })
+              )}
+              </>
               )}
               <div ref={messagesEndRef} />
             </div>

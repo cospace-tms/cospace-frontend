@@ -67,7 +67,29 @@ export const SearchView: React.FC<SearchViewProps> = ({
     });
     return result;
   }, [customEmojis]);
-
+  // FTS5 検索スニペットを安全にサニタイズ（ハイライトタグ以外のHTMLタグを無害化）
+  const sanitizeSnippet = useCallback((snippet: string) => {
+    if (!snippet) return '';
+    // 1. <mark> と </mark> を一時的なプレースホルダーに置換
+    let temp = snippet
+      .replace(/<mark>/gi, '___MARK_START___')
+      .replace(/<\/mark>/gi, '___MARK_END___');
+      
+    // 2. HTML エスケープ処理
+    temp = temp
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+      
+    // 3. プレースホルダーを <mark> タグに戻す
+    const sanitized = temp
+      .replace(/___MARK_START___/g, '<mark class="search-highlight" style="background-color: rgba(245, 158, 11, 0.3); color: inherit; padding: 2px 4px; border-radius: 4px; font-weight: bold;">')
+      .replace(/___MARK_END___/g, '</mark>');
+      
+    return sanitized;
+  }, []);
   // タイムスタンプフォーマット
   const formatDateTime = (isoString: string) => {
     try {
@@ -274,7 +296,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                       </div>
                       <div
                         style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, wordBreak: 'break-all' }}
-                        dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(msg.snippet) }}
+                        dangerouslySetInnerHTML={{ __html: replaceCustomEmojis(sanitizeSnippet(msg.snippet)) }}
                       />
                     </div>
                   ))}
@@ -320,7 +342,7 @@ export const SearchView: React.FC<SearchViewProps> = ({
                       </div>
                       <div
                         style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5, wordBreak: 'break-all' }}
-                        dangerouslySetInnerHTML={{ __html: doc.snippet }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeSnippet(doc.snippet) }}
                       />
                     </div>
                   ))}

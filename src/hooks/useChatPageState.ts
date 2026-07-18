@@ -263,6 +263,42 @@ export const useChatPageState = ({
     apiSendMessage,
   });
 
+  const [hasMorePastMessages, setHasMorePastMessages] = useState(true);
+  const [loadingPastMessages, setLoadingPastMessages] = useState(false);
+
+  // 過去ログフェッチ関数
+  const loadPastMessages = useCallback(async () => {
+    if (!activeChannelId || loadingPastMessages || !hasMorePastMessages) return;
+    if (messages.length === 0) return;
+
+    setLoadingPastMessages(true);
+    try {
+      const before = messages[0].createdAt;
+      const response = await apiClient.get<{
+        success: boolean;
+        data: Message[];
+      }>(`/api/messages`, {
+        channel_id: activeChannelId,
+        before,
+        limit: "50",
+      });
+
+      if (response.success && Array.isArray(response.data)) {
+        const newMsgs = response.data;
+        if (newMsgs.length > 0) {
+          setFetchedMessages(newMsgs);
+        }
+        if (newMsgs.length < 50) {
+          setHasMorePastMessages(false);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load past messages:", error);
+    } finally {
+      setLoadingPastMessages(false);
+    }
+  }, [activeChannelId, messages, hasMorePastMessages, loadingPastMessages, setFetchedMessages]);
+
   // 4. メッセージフェッチロジック (ポーリングから呼び出す)
   const lastFetchedIdRef = useRef<string | null>(null);
 
@@ -274,7 +310,9 @@ export const useChatPageState = ({
         channel_id: activeChannelId,
       };
       if (lastFetchedIdRef.current) {
-        params.last_id = lastFetchedIdRef.current;
+        params.since = lastFetchedIdRef.current;
+      } else {
+        params.limit = "50";
       }
 
       const response = await apiClient.get<{
@@ -317,6 +355,7 @@ export const useChatPageState = ({
   useEffect(() => {
     lastFetchedIdRef.current = null;
     setReplyTargetMessage(null);
+    setHasMorePastMessages(true);
   }, [activeChannelId]);
 
   // 最後に見ていたワークスペース、ビュー、チャンネルを自動保存
@@ -892,5 +931,8 @@ export const useChatPageState = ({
     loadNotifications,
     subscription,
     fetchSubscription,
+    loadPastMessages,
+    hasMorePastMessages,
+    loadingPastMessages,
   };
 };

@@ -25,7 +25,13 @@ export function parseMarkdownToHtml(md: string): string {
     return `<${tag} id="${id}" class="md-${tag}"${attrs}>${content}</${tag}>`;
   });
 
-  return processedHtml;
+  // 4. 生成されたHTMLから危険なプロトコルを持つ href / src 属性を排除して XSS を防ぐ
+  const sanitizedHtml = processedHtml.replace(
+    /(href|src)\s*=\s*(['"])\s*(javascript|data|vbscript):/gi,
+    '$1=$2#invalid-scheme-'
+  );
+
+  return sanitizedHtml;
 }
 
 /**

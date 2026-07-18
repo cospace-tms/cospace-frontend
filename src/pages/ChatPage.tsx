@@ -299,6 +299,42 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     apiSendMessage,
   });
 
+  const [hasMorePastMessages, setHasMorePastMessages] = useState(true);
+  const [loadingPastMessages, setLoadingPastMessages] = useState(false);
+
+  // 過去ログフェッチ関数
+  const loadPastMessages = useCallback(async () => {
+    if (!activeChannelId || loadingPastMessages || !hasMorePastMessages) return;
+    if (messages.length === 0) return;
+
+    setLoadingPastMessages(true);
+    try {
+      const before = messages[0].createdAt;
+      const response = await apiClient.get<{
+        success: boolean;
+        data: Message[];
+      }>(`/api/messages`, {
+        channel_id: activeChannelId,
+        before,
+        limit: "50",
+      });
+
+      if (response.success && Array.isArray(response.data)) {
+        const newMsgs = response.data;
+        if (newMsgs.length > 0) {
+          setFetchedMessages(newMsgs);
+        }
+        if (newMsgs.length < 50) {
+          setHasMorePastMessages(false);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load past messages:", error);
+    } finally {
+      setLoadingPastMessages(false);
+    }
+  }, [activeChannelId, messages, hasMorePastMessages, loadingPastMessages, setFetchedMessages]);
+
   // 4. メッセージフェッチロジック (ポーリングから呼び出す)
   const lastFetchedIdRef = useRef<string | null>(null);
 
@@ -310,7 +346,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         channel_id: activeChannelId,
       };
       if (lastFetchedIdRef.current) {
-        params.last_id = lastFetchedIdRef.current;
+        params.since = lastFetchedIdRef.current;
+      } else {
+        params.limit = "50";
       }
 
       const response = await apiClient.get<{
@@ -344,6 +382,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   useEffect(() => {
     lastFetchedIdRef.current = null;
     setReplyTargetMessage(null);
+    setHasMorePastMessages(true);
   }, [activeChannelId]);
 
   // 最後に見ていたワークスペース、ビュー、チャンネルを自動保存
@@ -619,16 +658,122 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     setChannelUnreads(unreads);
   }, [channels, activeChannelId, activeView, currentUser]);
 
-  // 定期的な通知およびチャンネル情報のリロード（ポーリング）
+  // ユーザーのアイドル状態（離席）とアクティブ状態を管理
+  const [isPageActive, setIsPageActive] = useState(document.visibilityState === 'visible');
+  const [isPageIdle, setIsPageIdle] = useState(false);
+  const pageIdleTimeoutRef = useRef<any>(null);
+
+  // 通知許可 & プッシュ登録状況
+  const [isPushActive, setIsPushActive] = useState(false);
+
   useEffect(() => {
-    // 起動時 / 画面切り替え時に最新の通知を取得
-    loadNotifications();
+    if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+      navigator.serviceWorker.ready.then(reg => {
+        reg.pushManager.getSubscription().then(sub => {
+          setIsPushActive(!!sub);
+        }).catch(() => setIsPushActive(false));
+      }).catch(() => setIsPushActive(false));
+    }
+  }, []);
+
+  // アイドルから復帰時やタブアクティブ時の同期処理
+  const syncPageData = useCallback(async () => {
+    if (currentUserRole === 'guest') return;
+    try {
+      const count = await apiClient.getUnreadNotificationsCount();
+      setUnreadNotificationsCount(count);
+
+      if (activeView === 'inbox') {
+        loadNotifications();
+      }
+
+      if (activeWorkspaceId) {
+        const [chanRes, groupsRes] = await Promise.all([
+          apiClient.get<{ success: boolean; data: Channel[] }>(
+            `/api/workspaces/${activeWorkspaceId}/channels`,
+            { last_reads: getLastReadsParam() }
+          ).catch(() => null),
+          apiClient.get<{ success: boolean; data: any[] }>(
+            `/api/workspaces/${activeWorkspaceId}/groups`
+          ).catch(() => null)
+        ]);
+
+        if (chanRes && chanRes.success && Array.isArray(chanRes.data)) {
+          setChannels(chanRes.data);
+        }
+        if (groupsRes && groupsRes.success && Array.isArray(groupsRes.data)) {
+          setGroups(groupsRes.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync page data:', err);
+    }
+  }, [activeWorkspaceId, activeView, currentUserRole, loadNotifications, getLastReadsParam]);
+
+  // アイドル判定
+  useEffect(() => {
+    const resetIdle = () => {
+      if (isPageIdle) {
+        setIsPageIdle(false);
+        if (document.visibilityState === 'visible') {
+          syncPageData();
+        }
+      }
+      if (pageIdleTimeoutRef.current) clearTimeout(pageIdleTimeoutRef.current);
+      pageIdleTimeoutRef.current = setTimeout(() => {
+        setIsPageIdle(true);
+      }, 180000); // 3分
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach(e => window.addEventListener(e, resetIdle));
+    resetIdle();
+
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetIdle));
+      if (pageIdleTimeoutRef.current) clearTimeout(pageIdleTimeoutRef.current);
+    };
+  }, [isPageIdle, syncPageData]);
+
+  // アクティブ（visibilitychange）監視
+  useEffect(() => {
+    const handleVis = () => {
+      const visible = document.visibilityState === 'visible';
+      setIsPageActive(visible);
+      if (visible && !isPageIdle) {
+        syncPageData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVis);
+    return () => document.removeEventListener('visibilitychange', handleVis);
+  }, [isPageIdle, syncPageData]);
+
+  // Service Worker からのプッシュ通知シグナル連携
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handlePushMsg = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'PUSH_RECEIVED') {
+        syncPageData();
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handlePushMsg);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handlePushMsg);
+    };
+  }, [syncPageData]);
+
+  // 定期ポーリングとバックアップ制御
+  useEffect(() => {
+    syncPageData();
 
     if (activeWorkspaceId) {
       fetchGroups(activeWorkspaceId);
     }
 
     const pollWorkspaces = async () => {
+      if (!isPageActive || isPageIdle) return;
       try {
         const wsResponse = await apiClient.get<{ success: boolean; data: Workspace[] }>('/api/workspaces');
         if (wsResponse.success && Array.isArray(wsResponse.data)) {
@@ -638,36 +783,28 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         console.warn('Failed to poll workspaces:', err);
       }
     };
-    pollWorkspaces();
+    
+    const wsInterval = setInterval(pollWorkspaces, 30000); // ワークスペース一覧は30秒間隔
 
-    const interval = setInterval(() => {
-      // 通知のみ定期的にポーリングする（リアルタイム性が必要なため）
-      loadNotifications();
+    if (isPushActive) {
+      return () => {
+        clearInterval(wsInterval);
+      };
+    }
 
-      if (activeWorkspaceId) {
-        // チャンネル一覧も裏で再フェッチして未読状態（updatedAt）を検出する
-        apiClient.get<{ success: boolean; data: Channel[] }>(
-          `/api/workspaces/${activeWorkspaceId}/channels`,
-          { last_reads: getLastReadsParam() }
-        ).then((res) => {
-          if (res.success && Array.isArray(res.data)) {
-            setChannels(res.data);
-          }
-        }).catch((err) => console.error('Failed to poll channels:', err));
+    // プッシュ通知が無効な場合のみ、10秒おきに軽量な未読通知カウントのみをポーリング
+    const countInterval = setInterval(() => {
+      if (!isPageActive || isPageIdle) return;
+      apiClient.getUnreadNotificationsCount()
+        .then(count => setUnreadNotificationsCount(count))
+        .catch(err => console.error('Failed to check unread count:', err));
+    }, 10000);
 
-        // グループも裏で再フェッチする
-        apiClient.get<{ success: boolean; data: any[] }>(
-          `/api/workspaces/${activeWorkspaceId}/groups`
-        ).then((res) => {
-          if (res.success && Array.isArray(res.data)) {
-            setGroups(res.data);
-          }
-        }).catch((err) => console.error('Failed to poll groups:', err));
-      }
-    }, 10000); // 10秒おき
-
-    return () => clearInterval(interval);
-  }, [activeWorkspaceId, activeView, loadNotifications]);
+    return () => {
+      clearInterval(wsInterval);
+      clearInterval(countInterval);
+    };
+  }, [activeWorkspaceId, isPageActive, isPageIdle, isPushActive, syncPageData, fetchGroups]);
 
   // タブのタイトルを動的に更新（未読通知がある場合は件数を表示）
   useEffect(() => {
@@ -1117,6 +1254,9 @@ export const ChatPage: React.FC<ChatPageProps> = ({
             }}
             onCreateDm={handleCreateDm}
             onRefreshChannelMembers={fetchChannelMembers}
+            onLoadPastMessages={loadPastMessages}
+            hasMorePastMessages={hasMorePastMessages}
+            loadingPastMessages={loadingPastMessages}
           />
         ) : (
           <div className="no-message-selected" style={{ flex: 1 }}>
