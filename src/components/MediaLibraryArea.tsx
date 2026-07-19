@@ -522,18 +522,17 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
 
                               {/* 各種操作 */}
                               <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
-                                <a
-                                  href={getAuthenticatedFileUrl(downloadUrl)}
-                                  download={file.file_name}
+                                <button
+                                  type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     downloadAuthenticatedFile(downloadUrl, file.file_name);
                                   }}
-                                  style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}
                                   title={t('error') === 'Error' ? 'Download' : 'ダウンロード'}
                                 >
                                   <Download size={14} />
-                                </a>
+                                </button>
                                 {canDelete && (
                                   <button
                                     onClick={() => handleDelete(file.id)}
