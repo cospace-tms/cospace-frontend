@@ -3,6 +3,7 @@ import { Upload, Trash2, Download, Eye, Lock, Unlock, FileText, Image, Film, Fil
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
 import { getApiUrl } from '../utils/apiUrl';
+import { createPortal } from 'react-dom';
 import { AuthenticatedImage } from './AuthenticatedImage';
 import { downloadAuthenticatedFile, getAuthenticatedFileUrl } from '../hooks/useAuthenticatedImage';
 
