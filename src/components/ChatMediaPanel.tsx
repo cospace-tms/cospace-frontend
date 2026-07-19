@@ -344,7 +344,7 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
                     title={isEn ? 'Download' : 'ダウンロード'}
                   >
                     <Download size={14} />
-                  </a>
+                  </button>
                 </div>
               </div>
             );
