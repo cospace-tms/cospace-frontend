@@ -1440,7 +1440,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         {/* ユーザー情報フッター */}
         {currentUser && (
-          <div ref={userMenuRef} className="sidebar-footer" style={{ position: 'relative', zIndex: showUserMenu ? 200 : 1, padding: isCollapsed ? '12px 0' : '12px 16px', borderTop: '1px solid var(--border-light)' }}>
+          <div ref={userMenuRef} className="sidebar-footer" style={{ position: 'relative', zIndex: showUserMenu ? 2000 : 1, padding: isCollapsed ? '12px 0' : '12px 16px', borderTop: '1px solid var(--border-light)' }}>
             {isCollapsed ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', width: '100%' }}>
                 <div 
@@ -1505,7 +1505,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   position: 'absolute', 
                   bottom: '100%', 
                   left: isCollapsed ? '40px' : '10px', 
-                  zIndex: 100, 
+                  zIndex: 2000, 
                   background: 'var(--bg-sidebar)', 
                   border: '1px solid var(--border-light)', 
                   borderRadius: '8px', 

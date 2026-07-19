@@ -264,7 +264,7 @@ body {
 
 .sidebar.popover-open {
   overflow: visible;
-  z-index: 50;
+  z-index: 2000;
 }
 
 .workspace-column {
@@ -1765,7 +1765,7 @@ body {
   }
 
   .sidebar.popover-open {
-    z-index: 999 !important;
+    z-index: 2000 !important;
   }
 
   /* 展開時の幅と浮き出し効果（シャドウ） */
