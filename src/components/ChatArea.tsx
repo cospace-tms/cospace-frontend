@@ -8,6 +8,7 @@ import { ItemsArea } from './ItemsArea';
 import { MediaLibraryArea } from './MediaLibraryArea';
 import { AuthenticatedImage } from './AuthenticatedImage';
 import { parseMarkdownToHtml } from '../utils/markdown';
+import { useLanguage } from '../utils/i18n';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';
 

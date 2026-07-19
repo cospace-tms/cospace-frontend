@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuthenticatedImage } from '../hooks/useAuthenticatedImage';
 import { ImageOff } from 'lucide-react';
 
-interface AuthenticatedImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'onClick'> {
+interface AuthenticatedImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src' | 'onClick'> {
   src: string | null | undefined;
   fallbackText?: string;
   onClick?: (e: React.MouseEvent<HTMLImageElement | HTMLDivElement>, blobUrl: string | null) => void;
