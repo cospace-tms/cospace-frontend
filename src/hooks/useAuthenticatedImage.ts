@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getApiUrl } from '../utils/apiUrl';
 
 /**
  * 認証ヘッダー(X-User-Id)を付与して画像を取得し、
@@ -17,10 +18,11 @@ export function useAuthenticatedImage(src: string | null | undefined) {
       return;
     }
 
-    const isApiFile = src.includes('/api/files/download/') || src.includes('/api/files/');
+    const resolvedSrc = getApiUrl(src);
+    const isApiFile = resolvedSrc.includes('/api/files/download/') || resolvedSrc.includes('/api/files/');
 
     if (!isApiFile) {
-      setBlobUrl(src);
+      setBlobUrl(resolvedSrc);
       setLoading(false);
       setError(false);
       return;
@@ -36,7 +38,6 @@ export function useAuthenticatedImage(src: string | null | undefined) {
       try {
         const userId = localStorage.getItem('cohive_user_id') || '';
         const token = localStorage.getItem('cohive_auth_token') || '';
-        const fullUrl = src.startsWith('http') ? src : `http://127.0.0.1:8787${src.startsWith('/') ? '' : '/'}${src}`;
 
         const headers: HeadersInit = {};
         if (userId) {
@@ -46,7 +47,7 @@ export function useAuthenticatedImage(src: string | null | undefined) {
           headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const res = await fetch(fullUrl, { headers });
+        const res = await fetch(resolvedSrc, { headers });
 
         if (!res.ok) {
           throw new Error(`Failed to load image: ${res.status}`);
@@ -87,7 +88,7 @@ export async function downloadAuthenticatedFile(fileUrl: string, fileName: strin
   try {
     const userId = localStorage.getItem('cohive_user_id') || '';
     const token = localStorage.getItem('cohive_auth_token') || '';
-    const fullUrl = fileUrl.startsWith('http') ? fileUrl : `http://127.0.0.1:8787${fileUrl.startsWith('/') ? '' : '/'}${fileUrl}`;
+    const fullUrl = getApiUrl(fileUrl);
 
     const headers: HeadersInit = {};
     if (userId) headers['X-User-Id'] = userId;

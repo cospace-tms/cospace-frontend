@@ -3,6 +3,7 @@ import { X, Upload, Loader } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
 import { updateThemeColorMeta } from '../utils/theme';
+import { getApiUrl } from '../utils/apiUrl';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -631,7 +632,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '5px' }}>
                 <div className="user-avatar" style={{ width: '50px', height: '50px', fontSize: '20px', overflow: 'hidden' }}>
                   {avatarUrl ? (
-                    <img src={avatarUrl.startsWith('http') ? avatarUrl : `http://127.0.0.1:8787${avatarUrl}`} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    <img src={getApiUrl(avatarUrl)} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                   ) : (
                     displayName.substring(0, 1).toUpperCase()
                   )}

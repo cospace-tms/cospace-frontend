@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Hash, Plus, Settings, Inbox, User, LogOut, MoreHorizontal, Lock, MessageCircle, Globe, CheckSquare, ToggleLeft, ChevronRight, ChevronLeft, BookOpen, Image, Sun, Moon, Home, Menu, Star, Search, Users } from 'lucide-react';
 import { useLanguage } from '../utils/i18n';
+import { getApiUrl } from '../utils/apiUrl';
 
 interface Group {
   id: string;
@@ -1453,7 +1454,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   {currentUser.avatarUrl ? (
                     <img 
-                      src={currentUser.avatarUrl.startsWith('http') ? currentUser.avatarUrl : `http://127.0.0.1:8787${currentUser.avatarUrl}`} 
+                      src={getApiUrl(currentUser.avatarUrl)} 
                       alt="Avatar" 
                       style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
                     />
@@ -1476,7 +1477,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="user-avatar" style={{ overflow: 'hidden', flexShrink: 0 }}>
                     {currentUser.avatarUrl ? (
                       <img 
-                        src={currentUser.avatarUrl.startsWith('http') ? currentUser.avatarUrl : `http://127.0.0.1:8787${currentUser.avatarUrl}`} 
+                        src={getApiUrl(currentUser.avatarUrl)} 
                         alt="Avatar" 
                         style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} 
                       />

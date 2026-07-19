@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Briefcase, Hash, Trash2, Upload, Loader, CreditCard } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
+import { getApiUrl } from '../utils/apiUrl';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -221,7 +222,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginTop: '5px' }}>
                   <div className="user-avatar" style={{ width: '50px', height: '50px', fontSize: '20px' }}>
                     {avatarUrl ? (
-                      <img src={avatarUrl.startsWith('http') ? avatarUrl : `http://127.0.0.1:8787${avatarUrl}`} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                      <img src={getApiUrl(avatarUrl)} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                     ) : (
                       displayName.substring(0, 1).toUpperCase()
                     )}

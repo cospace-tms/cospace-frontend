@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Image, FileText, Film, File, Download, Loader, Eye, X, Maximize2, Minimize2, Upload } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
+import { getApiUrl } from '../utils/apiUrl';
 import { AuthenticatedImage } from './AuthenticatedImage';
 import { downloadAuthenticatedFile } from '../hooks/useAuthenticatedImage';
 
@@ -256,7 +257,7 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
           files.map((file) => {
             const isImage = file.content_type.startsWith('image/');
             const isVideo = file.content_type.startsWith('video/');
-            const downloadUrl = `http://127.0.0.1:8787/api/files/download/${file.object_key}`;
+            const downloadUrl = getApiUrl(`/api/files/download/${file.object_key}`);
 
             return (
               <div
@@ -418,7 +419,7 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
               />
             ) : (
               <video
-                src={`http://127.0.0.1:8787/api/files/download/${previewFile.object_key}`}
+                src={getApiUrl(`/api/files/download/${previewFile.object_key}`)}
                 controls
                 autoPlay
                 style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '8px' }}

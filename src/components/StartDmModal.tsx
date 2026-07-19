@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, UserPlus } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
+import { getApiUrl } from '../utils/apiUrl';
 
 interface Member {
   userId: string;
@@ -163,7 +164,7 @@ export const StartDmModal: React.FC<StartDmModalProps> = ({
                       <div className="user-avatar" style={{ width: '36px', height: '36px', fontSize: '14px', overflow: 'hidden', flexShrink: 0 }}>
                         {member.avatarUrl ? (
                           <img
-                            src={member.avatarUrl.startsWith('http') ? member.avatarUrl : `http://127.0.0.1:8787${member.avatarUrl}`}
+                            src={getApiUrl(member.avatarUrl)}
                             alt={member.displayName}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           />

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../hooks/useChat';
 import { X, Send, Smile, Paperclip } from 'lucide-react';
 import { AuthenticatedImage } from './AuthenticatedImage';
+import { getApiUrl } from '../utils/apiUrl';
 
 interface ThreadAreaProps {
   parentMessage: Message;
@@ -77,12 +78,12 @@ export const ThreadArea: React.FC<ThreadAreaProps> = ({
               src={fileUrl} 
               alt={fileName || 'Attachment'} 
               style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
-              onClick={(_e, blobUrl) => window.open(blobUrl || (fileUrl.startsWith('http') ? fileUrl : `http://127.0.0.1:8787${fileUrl}`), '_blank')}
+              onClick={(_e, blobUrl) => window.open(blobUrl || getApiUrl(fileUrl), '_blank')}
             />
           </div>
         ) : (
           <a 
-            href={fileUrl.startsWith('http') ? fileUrl : `http://127.0.0.1:8787${fileUrl}`} 
+            href={getApiUrl(fileUrl)} 
             target="_blank" 
             rel="noopener noreferrer"
             className="attachment-file-link"

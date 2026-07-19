@@ -8,6 +8,7 @@ import { WorkspaceGroupsTab } from './WorkspaceGroupsTab';
 import { SmtpSettingsTab } from './SmtpSettingsTab';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
+import { getApiUrl } from '../utils/apiUrl';
 
 interface Member {
   userId: string;
@@ -521,7 +522,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div className="user-avatar" style={{ width: '32px', height: '32px', fontSize: '12px', overflow: 'hidden' }}>
                         {member.avatarUrl ? (
-                          <img src={member.avatarUrl.startsWith('http') ? member.avatarUrl : `http://127.0.0.1:8787${member.avatarUrl}`} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          <img src={getApiUrl(member.avatarUrl)} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                         ) : (
                           member.displayName.substring(0, 1).toUpperCase()
                         )}

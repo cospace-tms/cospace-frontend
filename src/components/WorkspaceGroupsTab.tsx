@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Users, Shield, Trash2, UserMinus, Edit, Lock } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
+import { getApiUrl } from '../utils/apiUrl';
 
 interface Group {
   id: string;
@@ -477,7 +478,7 @@ export const WorkspaceGroupsTab: React.FC<WorkspaceGroupsTabProps> = ({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <div className="user-avatar" style={{ width: '26px', height: '26px', fontSize: '11px', overflow: 'hidden' }}>
                         {member.avatarUrl ? (
-                          <img src={member.avatarUrl.startsWith('http') ? member.avatarUrl : `http://127.0.0.1:8787${member.avatarUrl}`} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                          <img src={getApiUrl(member.avatarUrl)} alt="Avatar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
                         ) : (
                           member.displayName.substring(0, 1).toUpperCase()
                         )}

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Message } from '../hooks/useChat';
 import { Send, Smile, Paperclip, AlertCircle, RefreshCw, Trash2, HelpCircle, X, Loader, MessageSquare, CheckSquare, BookOpen, Menu, Image, Pin, Search, Plus, Upload, Maximize2, Minimize2, UserMinus } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
+import { getApiUrl } from '../utils/apiUrl';
 import { CreateItemModal } from './CreateItemModal';
 import { DocumentPanel } from './DocumentPanel';
 import { ItemsArea } from './ItemsArea';
@@ -1461,12 +1462,12 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                                   src={msg.fileUrl} 
                                   alt={msg.fileName || 'Attachment'} 
                                   style={{ maxWidth: '300px', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
-                                  onClick={(_e, blobUrl) => window.open(blobUrl || (msg.fileUrl?.startsWith('http') ? msg.fileUrl : `http://127.0.0.1:8787${msg.fileUrl}`), '_blank')}
+                                  onClick={(_e, blobUrl) => window.open(blobUrl || getApiUrl(msg.fileUrl), '_blank')}
                                 />
                               </div>
                             ) : (
                               <a 
-                                href={msg.fileUrl.startsWith('http') ? msg.fileUrl : `http://127.0.0.1:8787${msg.fileUrl}`} 
+                                href={getApiUrl(msg.fileUrl)} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="attachment-file-link"

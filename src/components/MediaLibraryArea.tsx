@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Upload, Trash2, Download, Eye, Lock, Unlock, FileText, Image, Film, File, Search, Plus, Menu, ChevronRight, Maximize2, Minimize2, X, Loader, ArrowLeft } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
+import { getApiUrl } from '../utils/apiUrl';
 import { createPortal } from 'react-dom';
 import { AuthenticatedImage } from './AuthenticatedImage';
 import { downloadAuthenticatedFile } from '../hooks/useAuthenticatedImage';
@@ -459,7 +460,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                     {filteredFiles.map((file) => {
                       const isImage = file.content_type.startsWith('image/');
                       const isVideo = file.content_type.startsWith('video/');
-                      const downloadUrl = `http://127.0.0.1:8787/api/files/download/${file.object_key}`;
+                      const downloadUrl = getApiUrl(`/api/files/download/${file.object_key}`);
 
                       // 削除ボタン表示条件
                       const canDelete = file.uploader_id === currentUserId || isOwner || isGroupAdmin;
@@ -728,7 +729,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                     />
                   ) : previewFile.content_type.startsWith('video/') ? (
                     <video
-                      src={`http://127.0.0.1:8787/api/files/download/${previewFile.object_key}`}
+                      src={getApiUrl(`/api/files/download/${previewFile.object_key}`)}
                       controls
                       style={{ maxWidth: '100%', maxHeight: '500px' }}
                     />
