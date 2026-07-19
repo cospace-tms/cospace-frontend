@@ -68,6 +68,21 @@ function AppContent({ saas }: AppProps) {
     }
   }, [saas?.isWorkspaceSuspended]);
 
+  // iOS Safari での入力欄解除時（focusout）にスクロール位置を自動補正（画面下部余白防止）
+  useEffect(() => {
+    const handleFocusOut = (e: FocusEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      }
+    };
+
+    document.addEventListener('focusout', handleFocusOut);
+    return () => {
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
+
   // 新規登録 (サインアップ) 用の状態
   const [showRegister, setShowRegister] = useState(false);
   const [registerEmail, setRegisterEmail] = useState('');
