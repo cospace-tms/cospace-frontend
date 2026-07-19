@@ -282,10 +282,11 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     formData.append('file', file);
 
     try {
-      const response = await apiClient.post<{ success: boolean; fileUrl: string }>('/api/files/upload', formData);
-      if (response.success && response.fileUrl) {
-        setAvatarUrl(response.fileUrl);
-        await triggerProfileUpdate(displayName, response.fileUrl, profileLang);
+      const response = await apiClient.post<{ success: boolean; fileUrl?: string; avatarUrl?: string }>('/api/avatars/upload', formData);
+      const newAvatarUrl = response.avatarUrl || response.fileUrl;
+      if (response.success && newAvatarUrl) {
+        setAvatarUrl(newAvatarUrl);
+        await triggerProfileUpdate(displayName, newAvatarUrl, profileLang);
       }
     } catch (err: any) {
       alert(`${t('profile.updateFailed')} (Avatar): ${err.message || err}`);

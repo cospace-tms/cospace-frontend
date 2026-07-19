@@ -3,9 +3,8 @@ import { Upload, Trash2, Download, Eye, Lock, Unlock, FileText, Image, Film, Fil
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
 import { getApiUrl } from '../utils/apiUrl';
-import { createPortal } from 'react-dom';
 import { AuthenticatedImage } from './AuthenticatedImage';
-import { downloadAuthenticatedFile } from '../hooks/useAuthenticatedImage';
+import { downloadAuthenticatedFile, getAuthenticatedFileUrl } from '../hooks/useAuthenticatedImage';
 
 interface MediaFile {
   id: string;
@@ -523,8 +522,12 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                               {/* 各種操作 */}
                               <div style={{ display: 'flex', gap: '8px' }} onClick={(e) => e.stopPropagation()}>
                                 <a
-                                  href={downloadUrl}
+                                  href={getAuthenticatedFileUrl(downloadUrl)}
                                   download={file.file_name}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    downloadAuthenticatedFile(downloadUrl, file.file_name);
+                                  }}
                                   style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
                                   title={t('error') === 'Error' ? 'Download' : 'ダウンロード'}
                                 >
@@ -729,7 +732,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                     />
                   ) : previewFile.content_type.startsWith('video/') ? (
                     <video
-                      src={getApiUrl(`/api/files/download/${previewFile.object_key}`)}
+                      src={getAuthenticatedFileUrl(`/api/files/download/${previewFile.object_key}`)}
                       controls
                       style={{ maxWidth: '100%', maxHeight: '500px' }}
                     />

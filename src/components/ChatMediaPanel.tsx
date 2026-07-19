@@ -4,7 +4,7 @@ import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
 import { getApiUrl } from '../utils/apiUrl';
 import { AuthenticatedImage } from './AuthenticatedImage';
-import { downloadAuthenticatedFile } from '../hooks/useAuthenticatedImage';
+import { downloadAuthenticatedFile, getAuthenticatedFileUrl } from '../hooks/useAuthenticatedImage';
 
 interface MediaFile {
   id: string;
@@ -419,7 +419,7 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
               />
             ) : (
               <video
-                src={getApiUrl(`/api/files/download/${previewFile.object_key}`)}
+                src={getAuthenticatedFileUrl(`/api/files/download/${previewFile.object_key}`)}
                 controls
                 autoPlay
                 style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: '8px' }}

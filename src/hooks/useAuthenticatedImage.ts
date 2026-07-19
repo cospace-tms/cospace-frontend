@@ -83,32 +83,51 @@ export function useAuthenticatedImage(src: string | null | undefined) {
 }
 
 /**
- * 認証ヘッダーを付与してファイルを安全にダウンロードするヘルパー関数
+ * 認証用パラメータ(user_id, token)をクエリに埋め込んだ直リンクURLを生成
+ */
+export function getAuthenticatedFileUrl(fileUrl: string): string {
+  if (!fileUrl) return '';
+  const fullUrl = getApiUrl(fileUrl);
+  if (!fullUrl.includes('/api/files/')) return fullUrl;
+
+  const userId = apiClient.getUserId() || localStorage.getItem('selected_user_id') || localStorage.getItem('cohive_user_id') || '';
+  const token = apiClient.getToken() || localStorage.getItem('cohive_auth_token') || '';
+
+  try {
+    const urlObj = new URL(fullUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+    if (userId && !urlObj.searchParams.has('user_id') && !urlObj.searchParams.has('userId')) {
+      urlObj.searchParams.set('user_id', userId);
+    }
+    if (token && !urlObj.searchParams.has('token')) {
+      urlObj.searchParams.set('token', token);
+    }
+    return urlObj.toString();
+  } catch (e) {
+    return fullUrl;
+  }
+}
+
+/**
+ * 認証ヘッダー/パラメータを付与してファイルを安全にダウンロードするヘルパー関数
  */
 export async function downloadAuthenticatedFile(fileUrl: string, fileName: string) {
   try {
-    const userId = apiClient.getUserId() || localStorage.getItem('selected_user_id') || localStorage.getItem('cohive_user_id') || '';
-    const token = apiClient.getToken() || localStorage.getItem('cohive_auth_token') || '';
-    const fullUrl = getApiUrl(fileUrl);
+    const authUrl = getAuthenticatedFileUrl(fileUrl);
+    const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
 
-    const headers: HeadersInit = {};
-    if (userId) headers['X-User-Id'] = userId;
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-
-    const res = await fetch(fullUrl, { headers });
-    if (!res.ok) {
-      throw new Error(`Download failed with status: ${res.status}`);
+    if (isIOS) {
+      // iOS Safari の場合は Blob URL ではなく直リンクアクセス (Content-Disposition: attachment) でダウンロード/表示を開く
+      window.open(authUrl, '_blank');
+      return;
     }
 
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = blobUrl;
+    a.href = authUrl;
     a.download = fileName;
+    a.target = '_blank';
     document.body.appendChild(a);
     a.click();
     a.remove();
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
   } catch (err) {
     console.error('Error downloading file:', err);
     alert('ファイルのダウンロードに失敗しました。');
