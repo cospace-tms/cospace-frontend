@@ -186,6 +186,7 @@ export class ApiClient {
       ) {
         if (!this.isRefreshing) {
           this.isRefreshing = true;
+          try {
             const refreshData = await this.refreshAccessToken();
             const newToken = typeof refreshData === "string" ? refreshData : refreshData.token;
             this.isRefreshing = false;
