@@ -10,6 +10,7 @@ interface SettingsModalProps {
     id: string;
     displayName: string;
     email: string;
+    avatarUrl?: string | null;
   };
   activeWorkspace: {
     id: string;
@@ -54,7 +55,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   
   // プロフィール編集ステート
   const [displayName, setDisplayName] = useState(currentUser.displayName);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(currentUser.avatarUrl || null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // ワークスペース編集ステート
@@ -67,6 +68,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setDisplayName(currentUser.displayName);
+      setAvatarUrl(currentUser.avatarUrl || null);
       setWorkspaceName(activeWorkspace?.name || '');
       setChannelName(activeChannel?.name || '');
       setChannelDescription(activeChannel?.description || '');
@@ -86,9 +88,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     formData.append('file', file);
 
     try {
-      const response = await apiClient.post<{ success: boolean; fileUrl: string }>('/api/avatars/upload', formData);
-      if (response.success && response.fileUrl) {
-        setAvatarUrl(response.fileUrl);
+      const response = await apiClient.post<{ success: boolean; fileUrl?: string; avatarUrl?: string }>('/api/avatars/upload', formData);
+      const newAvatarUrl = response.avatarUrl || response.fileUrl;
+      if (response.success && newAvatarUrl) {
+        setAvatarUrl(newAvatarUrl);
       }
     } catch (err: any) {
       alert(`アバターのアップロードに失敗しました: ${err.message || err}`);

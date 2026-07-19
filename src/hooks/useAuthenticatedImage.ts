@@ -108,28 +108,53 @@ export function getAuthenticatedFileUrl(fileUrl: string): string {
 }
 
 /**
- * 認証ヘッダー/パラメータを付与してファイルを安全にダウンロードするヘルパー関数
+ * 認証ヘッダー/パラメータを付与してファイルを安全かつ確実にダウンロードするヘルパー関数
  */
 export async function downloadAuthenticatedFile(fileUrl: string, fileName: string) {
   try {
     const authUrl = getAuthenticatedFileUrl(fileUrl);
-    const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const fullUrl = getApiUrl(fileUrl);
+    const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-    if (isIOS) {
-      // iOS Safari の場合は Blob URL ではなく直リンクアクセス (Content-Disposition: attachment) でダウンロード/表示を開く
-      window.open(authUrl, '_blank');
+    if (isMobile) {
+      // モバイル環境: 非同期 Blob の制限を回避するため、直リンクアクセス (Content-Disposition: attachment) でダウンロードシートを起動
+      window.location.href = authUrl;
       return;
     }
 
+    // PC環境: 認証ヘッダーを付与して fetch し、正常レスポンスから Blob URL を生成してダウンロード（破損完全回避）
+    const userId = apiClient.getUserId() || localStorage.getItem('selected_user_id') || localStorage.getItem('cohive_user_id') || '';
+    const token = apiClient.getToken() || localStorage.getItem('cohive_auth_token') || '';
+
+    const headers: HeadersInit = {};
+    if (userId) headers['X-User-Id'] = userId;
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(fullUrl, { headers });
+    if (res.ok) {
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+      return;
+    }
+
+    // フォールバック: 直リンクでダウンロード
     const a = document.createElement('a');
     a.href = authUrl;
     a.download = fileName;
-    a.target = '_blank';
     document.body.appendChild(a);
     a.click();
     a.remove();
   } catch (err) {
     console.error('Error downloading file:', err);
-    alert('ファイルのダウンロードに失敗しました。');
+    // フォールバック
+    const authUrl = getAuthenticatedFileUrl(fileUrl);
+    window.location.href = authUrl;
   }
 }
