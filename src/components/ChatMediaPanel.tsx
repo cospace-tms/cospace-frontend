@@ -100,6 +100,17 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const formatDate = (dateString?: string): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return dateString;
+      return date.toLocaleDateString();
+    } catch {
+      return dateString;
+    }
+  };
+
   const getFileIcon = (contentType: string) => {
     if (contentType.startsWith('image/')) {
       return <Image size={16} />;
@@ -305,7 +316,7 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
                       {file.file_name}
                     </span>
                     <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                      {formatFileSize(file.file_size)} • {formatDate(file.created_at)}
+                      {formatFileSize(file.file_size)} {'•'} {formatDate(file.created_at)}
                     </span>
                   </div>
                 </div>
@@ -314,6 +325,7 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {(isImage || isVideo) && (
                     <button
+                      type="button"
                       onClick={() => setPreviewFile(file)}
                       style={{
                         padding: '6px',
