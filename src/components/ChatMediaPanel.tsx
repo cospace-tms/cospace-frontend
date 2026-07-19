@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Image, FileText, Film, File, Download, Loader, Eye, X, Maximize2, Minimize2, Upload } from 'lucide-react';
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
+import { AuthenticatedImage } from './AuthenticatedImage';
+import { downloadAuthenticatedFile } from '../hooks/useAuthenticatedImage';
 
 interface MediaFile {
   id: string;
@@ -277,7 +279,7 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
                     }}
                   >
                     {isImage ? (
-                      <img
+                      <AuthenticatedImage
                         src={downloadUrl}
                         alt="thumb"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -302,21 +304,21 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
                     >
                       {file.file_name}
                     </span>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      {formatFileSize(file.file_size)} • {file.uploader_name || 'unknown'}
+                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                      {formatFileSize(file.file_size)} • {formatDate(file.created_at)}
                     </span>
                   </div>
                 </div>
 
-                {/* 操作アクション */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                {/* アクションボタン */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   {(isImage || isVideo) && (
                     <button
                       onClick={() => setPreviewFile(file)}
                       style={{
                         padding: '6px',
                         borderRadius: '4px',
-                        background: 'none',
+                        background: 'transparent',
                         border: 'none',
                         color: 'var(--text-muted)',
                         cursor: 'pointer',
@@ -327,15 +329,17 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
                       <Eye size={14} />
                     </button>
                   )}
-                  <a
-                    href={downloadUrl}
-                    download={file.file_name}
+                  <button
+                    type="button"
+                    onClick={() => downloadAuthenticatedFile(downloadUrl, file.file_name)}
                     style={{
                       padding: '6px',
                       borderRadius: '4px',
+                      background: 'transparent',
+                      border: 'none',
                       color: 'var(--text-muted)',
+                      cursor: 'pointer',
                       display: 'flex',
-                      textDecoration: 'none',
                     }}
                     title={isEn ? 'Download' : 'ダウンロード'}
                   >
@@ -395,8 +399,8 @@ export const ChatMediaPanel: React.FC<ChatMediaPanelProps> = ({
               <X size={20} />
             </button>
             {previewFile.content_type.startsWith('image/') ? (
-              <img
-                src={`http://127.0.0.1:8787/api/files/download/${previewFile.object_key}`}
+              <AuthenticatedImage
+                src={`/api/files/download/${previewFile.object_key}`}
                 alt="preview"
                 style={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain', borderRadius: '8px' }}
               />

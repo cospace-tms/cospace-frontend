@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Message } from '../hooks/useChat';
 import { X, Send, Smile, Paperclip } from 'lucide-react';
+import { AuthenticatedImage } from './AuthenticatedImage';
 
 interface ThreadAreaProps {
   parentMessage: Message;
@@ -72,11 +73,11 @@ export const ThreadArea: React.FC<ThreadAreaProps> = ({
       <div style={{ marginTop: '6px' }}>
         {isImageFile(fileName || '') ? (
           <div className="attachment-image-preview">
-            <img 
-              src={fileUrl.startsWith('http') ? fileUrl : `http://127.0.0.1:8787${fileUrl}`} 
+            <AuthenticatedImage 
+              src={fileUrl} 
               alt={fileName || 'Attachment'} 
               style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '6px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
-              onClick={() => window.open(fileUrl.startsWith('http') ? fileUrl : `http://127.0.0.1:8787${fileUrl}`, '_blank')}
+              onClick={(_e, blobUrl) => window.open(blobUrl || (fileUrl.startsWith('http') ? fileUrl : `http://127.0.0.1:8787${fileUrl}`), '_blank')}
             />
           </div>
         ) : (

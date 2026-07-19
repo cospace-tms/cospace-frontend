@@ -6,7 +6,7 @@ import { CreateItemModal } from './CreateItemModal';
 import { DocumentPanel } from './DocumentPanel';
 import { ItemsArea } from './ItemsArea';
 import { MediaLibraryArea } from './MediaLibraryArea';
-import { useLanguage } from '../utils/i18n';
+import { AuthenticatedImage } from './AuthenticatedImage';
 import { parseMarkdownToHtml } from '../utils/markdown';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-tomorrow.css';
@@ -1456,11 +1456,11 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                           <div className="message-attachment" style={{ marginTop: '6px' }}>
                             {isImageFile(msg.fileName || '') ? (
                               <div className="attachment-image-preview">
-                                <img 
-                                  src={msg.fileUrl.startsWith('http') ? msg.fileUrl : `http://127.0.0.1:8787${msg.fileUrl}`} 
+                                <AuthenticatedImage 
+                                  src={msg.fileUrl} 
                                   alt={msg.fileName || 'Attachment'} 
                                   style={{ maxWidth: '300px', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
-                                  onClick={() => window.open(msg.fileUrl!.startsWith('http') ? msg.fileUrl! : `http://127.0.0.1:8787${msg.fileUrl}`, '_blank')}
+                                  onClick={(_e, blobUrl) => window.open(blobUrl || (msg.fileUrl?.startsWith('http') ? msg.fileUrl : `http://127.0.0.1:8787${msg.fileUrl}`), '_blank')}
                                 />
                               </div>
                             ) : (

@@ -3,6 +3,8 @@ import { Upload, Trash2, Download, Eye, Lock, Unlock, FileText, Image, Film, Fil
 import { apiClient } from '../utils/apiClient';
 import { useLanguage } from '../utils/i18n';
 import { createPortal } from 'react-dom';
+import { AuthenticatedImage } from './AuthenticatedImage';
+import { downloadAuthenticatedFile } from '../hooks/useAuthenticatedImage';
 
 interface MediaFile {
   id: string;
@@ -482,11 +484,10 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                           {/* サムネイルプレビュー領域 */}
                           <div style={{ height: '130px', background: '#1e1e24', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
                             {isImage ? (
-                              <img
+                              <AuthenticatedImage
                                 src={downloadUrl}
                                 alt={file.file_name}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                loading="lazy"
                               />
                             ) : isVideo ? (
                               <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -720,8 +721,8 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                 {/* モーダルコンテンツプレビュー */}
                 <div style={{ flex: 1, background: '#111', display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '300px', overflow: 'hidden', position: 'relative' }}>
                   {previewFile.content_type.startsWith('image/') ? (
-                    <img
-                      src={`http://127.0.0.1:8787/api/files/download/${previewFile.object_key}`}
+                    <AuthenticatedImage
+                      src={`/api/files/download/${previewFile.object_key}`}
                       alt={previewFile.file_name}
                       style={{ maxWidth: '100%', maxHeight: '500px', objectFit: 'contain' }}
                     />
@@ -748,17 +749,18 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <a
-                      href={`http://127.0.0.1:8787/api/files/download/${previewFile.object_key}`}
-                      download={previewFile.file_name}
+                    <button
+                      type="button"
+                      onClick={() => downloadAuthenticatedFile(`/api/files/download/${previewFile.object_key}`, previewFile.file_name)}
                       style={{
                         padding: '8px 16px',
                         borderRadius: '8px',
                         background: 'var(--primary-color)',
                         color: '#fff',
-                        textDecoration: 'none',
+                        border: 'none',
                         fontWeight: 'bold',
                         fontSize: '13px',
+                        cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '6px'
@@ -766,7 +768,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                     >
                       <Download size={14} />
                       {t('error') === 'Error' ? 'Download' : 'ダウンロード'}
-                    </a>
+                    </button>
                     {(previewFile.uploader_id === currentUserId || isOwner || isGroupAdmin) && (
                       <button
                         onClick={() => handleDelete(previewFile.id)}
