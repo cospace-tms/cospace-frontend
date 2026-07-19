@@ -85,7 +85,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     formData.append('file', file);
 
     try {
-      const response = await apiClient.post<{ success: boolean; fileUrl: string }>('/api/files/upload', formData);
+      const response = await apiClient.post<{ success: boolean; fileUrl: string }>('/api/avatars/upload', formData);
       if (response.success && response.fileUrl) {
         setAvatarUrl(response.fileUrl);
       }
