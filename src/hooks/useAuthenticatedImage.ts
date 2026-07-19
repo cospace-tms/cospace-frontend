@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getApiUrl } from '../utils/apiUrl';
+import { apiClient } from '../utils/apiClient';
 
 /**
- * 認証ヘッダー(X-User-Id)を付与して画像を取得し、
+ * 認証ヘッダー(Authorization, X-User-Id)を付与して画像を取得し、
  * メモリ内限定の Blob URL (blob:http://...) を生成・管理するカスタムフック
  */
 export function useAuthenticatedImage(src: string | null | undefined) {
@@ -36,8 +37,8 @@ export function useAuthenticatedImage(src: string | null | undefined) {
       setError(false);
 
       try {
-        const userId = localStorage.getItem('cohive_user_id') || '';
-        const token = localStorage.getItem('cohive_auth_token') || '';
+        const userId = apiClient.getUserId() || localStorage.getItem('selected_user_id') || localStorage.getItem('cohive_user_id') || '';
+        const token = apiClient.getToken() || localStorage.getItem('cohive_auth_token') || '';
 
         const headers: HeadersInit = {};
         if (userId) {
@@ -86,8 +87,8 @@ export function useAuthenticatedImage(src: string | null | undefined) {
  */
 export async function downloadAuthenticatedFile(fileUrl: string, fileName: string) {
   try {
-    const userId = localStorage.getItem('cohive_user_id') || '';
-    const token = localStorage.getItem('cohive_auth_token') || '';
+    const userId = apiClient.getUserId() || localStorage.getItem('selected_user_id') || localStorage.getItem('cohive_user_id') || '';
+    const token = apiClient.getToken() || localStorage.getItem('cohive_auth_token') || '';
     const fullUrl = getApiUrl(fileUrl);
 
     const headers: HeadersInit = {};

@@ -105,12 +105,14 @@ export const DocumentPanel: React.FC<DocumentPanelProps> = ({
   useEffect(() => {
     const handleUnload = () => {
       if (hasMyLock) {
-        // keepalive を使ってブラウザを閉じた際も非同期でロック解放
+        const userId = apiClient.getUserId() || localStorage.getItem('selected_user_id') || localStorage.getItem('cohive_user_id') || '';
+        const token = apiClient.getToken() || localStorage.getItem('cohive_auth_token') || '';
+        const headers: Record<string, string> = { 'X-User-Id': userId };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         fetch(`/api/document-locks/${encodeURIComponent(lockKey)}/release`, {
           method: 'POST',
-          headers: {
-            'X-User-Id': localStorage.getItem('cohive_user_id') || '',
-          },
+          headers,
           keepalive: true,
         });
       }
