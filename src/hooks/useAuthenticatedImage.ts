@@ -117,7 +117,38 @@ export async function downloadAuthenticatedFile(fileUrl: string, fileName: strin
     const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     if (isMobile) {
-      // モバイル環境: 非同期 Blob の制限を回避するため、直リンクアクセス (Content-Disposition: attachment) でダウンロードシートを起動
+      // 1. iOS PWA / モバイル環境で Web Share API が利用可能な場合は「画像を保存/共有」シートを起動
+      const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone);
+      if ((isStandalone || isMobile) && typeof navigator !== 'undefined' && navigator.canShare && navigator.share) {
+        try {
+          const userId = apiClient.getUserId() || localStorage.getItem('selected_user_id') || localStorage.getItem('cohive_user_id') || '';
+          const token = apiClient.getToken() || localStorage.getItem('cohive_auth_token') || '';
+          const headers: HeadersInit = {};
+          if (userId) headers['X-User-Id'] = userId;
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          const res = await fetch(fullUrl, { headers });
+          if (res.ok) {
+            const blob = await res.blob();
+            const file = new File([blob], fileName, { type: blob.type || 'application/octet-stream' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: fileName
+              });
+              return;
+            }
+          }
+        } catch (shareErr: any) {
+          if (shareErr?.name !== 'AbortError') {
+            console.warn('Web Share API failed, fallback to location href:', shareErr);
+          } else {
+            return;
+          }
+        }
+      }
+
+      // 2. 通常モバイルブラウザ: 直リンクアクセス (Content-Disposition: attachment) でダウンロードシートを起動
       window.location.href = authUrl;
       return;
     }

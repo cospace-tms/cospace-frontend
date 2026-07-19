@@ -35,6 +35,7 @@ interface UserSession {
   id: string;
   displayName: string;
   email: string;
+  avatarUrl?: string | null;
   workspaceId: string;
   defaultChannelId: string;
   token?: string;
@@ -154,10 +155,35 @@ function AppContent({ saas }: AppProps) {
 
         // サイレントリフレッシュによりアクセストークンを再取得してログイン状態を復元
         try {
-          const token = await apiClient.refreshAccessToken();
+          const refreshData = await apiClient.refreshAccessToken();
+          const token = typeof refreshData === 'string' ? refreshData : refreshData?.token;
+          
+          let parsed: UserSession | null = null;
           const cachedSession = localStorage.getItem('cohive_session');
           if (cachedSession) {
-            const parsed = JSON.parse(cachedSession) as UserSession;
+            try { parsed = JSON.parse(cachedSession); } catch (e) {}
+          }
+
+          if (refreshData && typeof refreshData === 'object' && refreshData.id) {
+            const updatedSession: UserSession = {
+              id: refreshData.id,
+              displayName: refreshData.displayName || parsed?.displayName || '',
+              email: refreshData.email || parsed?.email || '',
+              avatarUrl: refreshData.avatarUrl !== undefined ? refreshData.avatarUrl : (parsed?.avatarUrl || null),
+              workspaceId: refreshData.workspaceId || parsed?.workspaceId || '',
+              defaultChannelId: refreshData.defaultChannelId || parsed?.defaultChannelId || '',
+              token: token,
+              language: refreshData.language || parsed?.language || 'ja',
+            };
+            apiClient.setToken(token);
+            apiClient.setWorkspaceId(updatedSession.workspaceId);
+            apiClient.setUserId(updatedSession.id);
+            setSession(updatedSession);
+            localStorage.setItem('cohive_session', JSON.stringify(updatedSession));
+            if (updatedSession.language === 'ja' || updatedSession.language === 'en') {
+              setLanguage(updatedSession.language);
+            }
+          } else if (parsed && token) {
             apiClient.setToken(token);
             apiClient.setWorkspaceId(parsed.workspaceId);
             apiClient.setUserId(parsed.id);

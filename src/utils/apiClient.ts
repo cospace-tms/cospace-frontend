@@ -48,7 +48,7 @@ export class ApiClient {
   /**
    * Cookie (HttpOnly) を使用してアクセストークンをサイレントリフレッシュします。
    */
-  async refreshAccessToken(): Promise<string> {
+  async refreshAccessToken(): Promise<any> {
     const base = this.baseUrl || (typeof window !== "undefined" ? window.location.origin : "");
     const url = new URL("/api/auth/refresh", base);
 
@@ -68,7 +68,7 @@ export class ApiClient {
     if (responseData.success && responseData.data?.token) {
       const newToken = responseData.data.token;
       this.setToken(newToken);
-      return newToken;
+      return responseData.data;
     }
 
     throw new Error("No token returned from refresh API");
@@ -186,8 +186,8 @@ export class ApiClient {
       ) {
         if (!this.isRefreshing) {
           this.isRefreshing = true;
-          try {
-            const newToken = await this.refreshAccessToken();
+            const refreshData = await this.refreshAccessToken();
+            const newToken = typeof refreshData === "string" ? refreshData : refreshData.token;
             this.isRefreshing = false;
             this.onTokenRefreshed(newToken);
           } catch (refreshErr) {
