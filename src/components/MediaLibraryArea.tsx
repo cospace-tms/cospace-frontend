@@ -63,7 +63,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   // フィルタ状態
-  const [selectedType, setSelectedType] = useState<'all' | 'image' | 'video' | 'document' | 'other'>('all');
+  const [selectedType, setSelectedType] = useState<'all' | 'image' | 'video' | 'audio' | 'document' | 'archive' | 'other'>('all');
   const [selectedChannelId, setSelectedChannelId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -379,7 +379,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
               <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                 {/* タイプフィルタータブ */}
                 <div className="tab-group" style={{ display: 'flex', background: 'var(--bg-active)', borderRadius: '8px', padding: '3px' }}>
-                  {(['all', 'image', 'video', 'document', 'other'] as const).map((type) => (
+                  {(['all', 'image', 'video', 'audio', 'document', 'archive', 'other'] as const).map((type) => (
                     <button
                       key={type}
                       onClick={() => setSelectedType(type)}
@@ -395,7 +395,13 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
                         textTransform: 'capitalize'
                       }}
                     >
-                      {type === 'all' ? (isEn ? 'All' : 'すべて') : type === 'image' ? (isEn ? 'Image' : '画像') : type === 'video' ? (isEn ? 'Video' : '動画') : type === 'document' ? (isEn ? 'Document' : '書類') : (isEn ? 'Other' : 'その他')}
+                      {type === 'all' ? (isEn ? 'All' : 'すべて') 
+                        : type === 'image' ? (isEn ? 'Image' : '画像') 
+                        : type === 'video' ? (isEn ? 'Video' : '動画') 
+                        : type === 'audio' ? (isEn ? 'Audio' : '音声') 
+                        : type === 'document' ? (isEn ? 'Document' : '書類') 
+                        : type === 'archive' ? (isEn ? 'Archive' : '圧縮ファイル') 
+                        : (isEn ? 'Other' : 'その他')}
                     </button>
                   ))}
                 </div>
