@@ -109,12 +109,12 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
   // タブ管理
   const [activeTab, setActiveTab] = useState<string>(
-    isMembersOnly ? 'members' : (initialTab === 'members' ? 'general' : initialTab)
+    isMembersOnly ? (initialTab === 'groups' ? 'groups' : 'members') : (initialTab === 'smtp' ? 'smtp' : 'general')
   );
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(isMembersOnly ? 'members' : (initialTab === 'members' ? 'general' : initialTab));
+      setActiveTab(isMembersOnly ? (initialTab === 'groups' ? 'groups' : 'members') : (initialTab === 'smtp' ? 'smtp' : 'general'));
     }
   }, [initialTab, isMembersOnly]);
 
@@ -637,7 +637,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
 
   const settingsContent = (
-    <div className={isEmbed ? "workspace-settings-embed" : "modal-content settings-modal"} style={isEmbed ? { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', padding: '24px', overflowY: 'auto' } : { maxWidth: activeTab === 'groups' ? '750px' : '650px', transition: 'max-width 0.2s' }} onClick={(e) => e.stopPropagation()}>
+    <div className={isEmbed ? "workspace-settings-embed" : "modal-content settings-modal"} style={isEmbed ? { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', padding: '24px', overflowY: 'auto' } : { maxWidth: activeTab === 'groups' ? '750px' : '620px', width: 'calc(100% - 32px)', height: '560px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', transition: 'max-width 0.2s' }} onClick={(e) => e.stopPropagation()}>
       <div className="modal-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {isEmbed && onMenuClick && (
@@ -655,7 +655,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
       </div>
 
       {/* タブ切り替えバー */}
-      <div className="settings-tabs">
+      <div className="settings-tabs" style={{ flexShrink: 0 }}>
         {isMembersOnly ? (
           <>
             <button className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>
@@ -695,7 +695,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
         })}
       </div>
 
-      <div className="settings-body" style={{ flex: 1, minHeight: 0 }}>
+      <div className="settings-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', boxSizing: 'border-box' }}>
         {activeTab === 'members' ? (
           renderMembersTab()
         ) : activeTab === 'general' ? (
@@ -745,7 +745,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
             </div>
           </div>
 
-          <div className="settings-tabs" style={{ marginTop: 0 }}>
+          <div className="settings-tabs" style={{ marginTop: 0, flexShrink: 0 }}>
             {isMembersOnly ? (
               <>
                 <button className={`tab-btn ${activeTab === 'members' ? 'active' : ''}`} onClick={() => setActiveTab('members')}>
@@ -785,7 +785,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
             })}
           </div>
 
-          <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, boxSizing: 'border-box' }}>
             {activeTab === 'members' && renderMembersTab()}
             {activeTab === 'general' && renderGeneralTab()}
             {activeTab === 'groups' && workspace && (

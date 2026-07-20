@@ -952,6 +952,8 @@ body {
   padding: 0 24px;
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-secondary);
+  flex-shrink: 0;
+  box-sizing: border-box;
 }
 
 .tab-btn {
@@ -967,7 +969,7 @@ body {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
-  margin-bottom: -1px;
+  box-sizing: border-box;
 }
 
 .tab-btn:hover:not(:disabled) {
@@ -2340,9 +2342,13 @@ body {
     display: flex !important;
   }
   
-  /* ワークスペース設定：通常のタブバーを隠してコンパクト切り替えボタン群を表示 */
+  /* ワークスペース設定：スマホ時もタブバーをflexで横スクロール表示 */
   .settings-tabs {
-    display: none !important;
+    display: flex !important;
+    padding: 0 12px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
   }
   .settings-tabs-mobile-only {
     display: flex !important;
