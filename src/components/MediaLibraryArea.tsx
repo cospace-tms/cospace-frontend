@@ -173,6 +173,7 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
   useEffect(() => {
     if (isChatMode && activeChannelId) {
       setUploadChannelId(activeChannelId);
+      setSelectedChannelId(activeChannelId);
     }
   }, [isChatMode, activeChannelId]);
 
@@ -376,60 +377,62 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
             {/* メイン一覧エリア */}
             <div className="media-library-list-panel" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               {/* コントロール・フィルターバー */}
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
-                {/* タイプフィルタータブ */}
-                <div className="tab-group" style={{ display: 'flex', background: 'var(--bg-active)', borderRadius: '8px', padding: '3px' }}>
-                  {(['all', 'image', 'video', 'audio', 'document', 'archive', 'other'] as const).map((type) => (
-                    <button
-                      key={type}
-                      onClick={() => setSelectedType(type)}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        background: selectedType === type ? 'var(--bg-sidebar)' : 'transparent',
-                        color: selectedType === type ? 'var(--text-primary)' : 'var(--text-muted)',
-                        cursor: 'pointer',
-                        fontSize: '13px',
-                        fontWeight: selectedType === type ? 'bold' : 'normal',
-                        textTransform: 'capitalize'
-                      }}
-                    >
-                      {type === 'all' ? (isEn ? 'All' : 'すべて') 
-                        : type === 'image' ? (isEn ? 'Image' : '画像') 
-                        : type === 'video' ? (isEn ? 'Video' : '動画') 
-                        : type === 'audio' ? (isEn ? 'Audio' : '音声') 
-                        : type === 'document' ? (isEn ? 'Document' : '書類') 
-                        : type === 'archive' ? (isEn ? 'Archive' : '圧縮ファイル') 
-                        : (isEn ? 'Other' : 'その他')}
-                    </button>
-                  ))}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
+                {/* 1段目: ドロップダウンセレクト群 (チャンネル絞り込み & タイプ絞り込み) */}
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {/* チャンネル絞り込み */}
+                  <select
+                    value={selectedChannelId}
+                    onChange={(e) => setSelectedChannelId(e.target.value)}
+                    disabled={isChatMode && !!activeChannelId}
+                    title={isChatMode && !!activeChannelId ? (t('error') === 'Error' ? 'Channel is fixed in chat mode' : 'チャット内ではチャンネルが固定されています') : undefined}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-sidebar)',
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                      fontSize: '13px',
+                      cursor: (isChatMode && activeChannelId) ? 'not-allowed' : 'pointer',
+                      opacity: (isChatMode && activeChannelId) ? 0.7 : 1,
+                    }}
+                  >
+                    <option value="all">{t('error') === 'Error' ? 'All Channels' : 'すべてのチャンネル'}</option>
+                    {channels.map((ch) => (
+                      <option key={ch.id} value={ch.id}>
+                        {ch.type === 'dm' ? `DM: ${ch.name}` : `# ${ch.name}`}
+                      </option>
+                    ))}
+                  </select>
+
+                  {/* タイプフィルターセレクト */}
+                  <select
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value as any)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-light)',
+                      background: 'var(--bg-sidebar)',
+                      color: 'var(--text-primary)',
+                      outline: 'none',
+                      fontSize: '13px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="all">{isEn ? 'All File Types' : 'すべてのファイル形式'}</option>
+                    <option value="image">{isEn ? 'Images' : '画像'}</option>
+                    <option value="video">{isEn ? 'Videos' : '動画'}</option>
+                    <option value="audio">{isEn ? 'Audio' : '音声'}</option>
+                    <option value="document">{isEn ? 'Documents' : '書類'}</option>
+                    <option value="archive">{isEn ? 'Archives' : '圧縮ファイル'}</option>
+                    <option value="other">{isEn ? 'Others' : 'その他'}</option>
+                  </select>
                 </div>
 
-                <select
-                  value={selectedChannelId}
-                  onChange={(e) => setSelectedChannelId(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-light)',
-                    background: 'var(--bg-sidebar)',
-                    color: 'var(--text-primary)',
-                    outline: 'none',
-                    fontSize: '13px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <option value="all">{t('error') === 'Error' ? 'All Channels' : 'すべてのチャンネル'}</option>
-                  {channels.map((ch) => (
-                    <option key={ch.id} value={ch.id}>
-                      {ch.type === 'dm' ? `DM: ${ch.name}` : `# ${ch.name}`}
-                    </option>
-                  ))}
-                </select>
-
-                {/* 検索バー */}
-                <div style={{ position: 'relative', flex: 1, minWidth: '180px' }}>
+                {/* 2段目: 検索バー */}
+                <div style={{ position: 'relative', width: '100%' }}>
                   <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
                     type="text"
