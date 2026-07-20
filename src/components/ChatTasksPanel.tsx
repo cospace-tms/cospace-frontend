@@ -257,7 +257,7 @@ export const ChatTasksPanel: React.FC<ChatTasksPanelProps> = ({
             >
               {/* タイトルと優先度 */}
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-word', overflowWrap: 'anywhere', lineHeight: '1.4', flex: 1, minWidth: 0 }}>
                   {task.title}
                 </span>
                 {task.priority !== 'none' && (
@@ -271,6 +271,7 @@ export const ChatTasksPanel: React.FC<ChatTasksPanelProps> = ({
                       color: getPriorityColor(task.priority),
                       fontWeight: 'bold',
                       textTransform: 'uppercase',
+                      flexShrink: 0,
                     }}
                   >
                     {task.priority}
@@ -280,7 +281,7 @@ export const ChatTasksPanel: React.FC<ChatTasksPanelProps> = ({
 
               {/* タスク詳細・説明（あれば） */}
               {task.description && (
-                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: '1.4' }}>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere', lineHeight: '1.4' }}>
                   {task.description}
                 </p>
               )}

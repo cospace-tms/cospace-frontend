@@ -565,21 +565,21 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         </div>
 
         {/* タイトル */}
-        <h4 style={{ fontSize: '13px', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)', wordBreak: 'break-all', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+        <h4 style={{ fontSize: '13px', fontWeight: 'bold', margin: 0, color: 'var(--text-primary)', wordBreak: 'break-word', overflowWrap: 'anywhere', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
           {item.status === 'done' && <CheckCircle2 size={14} style={{ color: '#10b981', flexShrink: 0, marginTop: '2px' }} />}
           <span>{item.title}</span>
         </h4>
 
         {/* 説明 */}
         {item.description && (
-          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-all' }}>
+          <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
             {stripMarkdown(item.description)}
           </p>
         )}
 
         {/* 下部 (期限・アサイン・クイック移動) */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '4px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', borderTop: '1px solid var(--border-light)', paddingTop: '8px', marginTop: '4px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: 0 }}>
             {item.endAt && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: overdue ? 'var(--accent-danger)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 <Clock size={11} />
@@ -591,7 +591,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
           </div>
 
           {/* クイック移動ボタン */}
-          <div style={{ display: 'flex', gap: '4px' }} onClick={e => e.stopPropagation()}>
+          <div style={{ display: 'flex', gap: '4px', marginLeft: 'auto' }} onClick={e => e.stopPropagation()}>
             {statusIndex > 0 && (
               <button
                 title={isEn ? `Back to ${workspaceStatuses[statusIndex - 1]}` : `${workspaceStatuses[statusIndex - 1]} に戻す`}
@@ -626,19 +626,8 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
     return (
       <div
         key={item.id}
+        className="items-list-row"
         onClick={() => openEditModal(item)}
-        style={{
-          background: 'var(--bg-secondary)',
-          border: '1px solid var(--border-light)',
-          borderRadius: '6px',
-          padding: '10px 16px',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          transition: 'border-color 0.15s, background-color 0.15s',
-        }}
         onMouseEnter={(e) => {
           e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.02)';
           e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
@@ -649,9 +638,9 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         }}
       >
         {/* 左側: ステータス、タイトル、タグ、優先度 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0, flex: 1 }}>
+        <div className="items-list-row-left">
           {/* 簡易完了チェック */}
-          <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
             {item.status === 'done' ? (
               <button
                 title={isEn ? 'Mark as incomplete' : '未完了に戻す'}
@@ -683,10 +672,10 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
             fontWeight: '500',
             color: item.status === 'done' ? 'var(--text-muted)' : 'var(--text-primary)',
             textDecoration: item.status === 'done' ? 'line-through' : 'none',
-            wordBreak: 'break-all',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap'
+            wordBreak: 'break-word',
+            overflowWrap: 'anywhere',
+            minWidth: 0,
+            flex: 1
           }}>
             {item.title}
           </span>
@@ -731,14 +720,14 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         </div>
 
         {/* 右側: 担当者、期限 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
+        <div className="items-list-row-right">
           {/* 担当者 */}
-          <div style={{ width: '120px', display: 'flex', justifyContent: 'flex-start' }}>
+          <div className="items-list-assignees-box">
             {renderAssignees(item)}
           </div>
 
           {/* 期限 */}
-          <div style={{ width: '130px', display: 'flex', justifyContent: 'flex-end' }}>
+          <div className="items-list-due-box">
             {item.endAt ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: overdue ? 'var(--accent-danger)' : 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 <Clock size={12} />
@@ -1112,24 +1101,15 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
       {/* 2. メイン表示コンテンツ */}
       {view === 'kanban' ? (
         /* 動的かんばんボード（カスタムステータス対応） */
-        <div style={{ flex: 1, display: 'flex', gap: '20px', padding: '24px', overflowX: 'auto', alignItems: 'flex-start' }}>
+        <div className="items-kanban-container custom-scrollbar">
           {displayStatuses.map(status => {
             const statusItems = filteredItems.filter(i => i.status === status);
             return (
               <div 
                 key={status} 
-                style={{ 
-                  flex: '1 0 280px', 
-                  maxWidth: '350px',
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  background: 'rgba(255,255,255,0.015)', 
-                  borderRadius: '8px', 
-                  border: '1px solid var(--border-light)', 
-                  maxHeight: '100%' 
-                }}
+                className="items-kanban-column"
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '2px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '2px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.02)', flexShrink: 0 }}>
                   <h3 style={{ fontSize: '14px', fontWeight: 'bold', margin: 0, color: '#f3f4f6', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: !workspaceStatuses.includes(status) ? '#f59e0b' : status === 'done' ? '#10b981' : status === 'in_progress' ? 'var(--primary-color)' : '#9ca3af' }}></span>
                     <span>{getStatusLabel(status)}</span>
@@ -1138,7 +1118,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
                     {statusItems.length}
                   </span>
                 </div>
-                <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', minHeight: '300px' }}>
+                <div className="items-kanban-cards-area custom-scrollbar">
                   {statusItems.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '32px 0', fontSize: '12px', color: 'var(--text-muted)' }}>{t('error') === 'Error' ? 'No tasks' : 'タスクはありません'}</div>
                   ) : (
@@ -1151,7 +1131,7 @@ export const ItemsArea: React.FC<ItemsAreaProps> = ({
         </div>
       ) : view === 'list' ? (
         /* リストビュー */
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px', padding: '24px', overflowY: 'auto' }}>
+        <div className="items-list-container custom-scrollbar">
           {displayStatuses.map(status => {
             const statusItems = filteredItems.filter(i => i.status === status);
             return (
