@@ -1980,9 +1980,18 @@ body {
   /* ==========================================
      ワークスペース管理のレスポンシブ
      ========================================== */
-  /* PC用タブバーを非表示 */
+  /* ワークスペース設定・管理のタブバー（スマホ時に横スクロール対応） */
   .settings-tabs {
-    display: none !important;
+    display: flex !important;
+    padding: 0 12px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-btn {
+    padding: 10px 12px !important;
+    flex-shrink: 0 !important;
   }
 
   /* モバイル用タブセレクトを表示 */
