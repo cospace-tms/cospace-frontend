@@ -380,31 +380,30 @@ export const MediaLibraryArea: React.FC<MediaLibraryAreaProps> = ({
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '16px' }}>
                 {/* 1段目: ドロップダウンセレクト群 (チャンネル絞り込み & タイプ絞り込み) */}
                 <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  {/* チャンネル絞り込み */}
-                  <select
-                    value={selectedChannelId}
-                    onChange={(e) => setSelectedChannelId(e.target.value)}
-                    disabled={isChatMode && !!activeChannelId}
-                    title={isChatMode && !!activeChannelId ? (t('error') === 'Error' ? 'Channel is fixed in chat mode' : 'チャット内ではチャンネルが固定されています') : undefined}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid var(--border-light)',
-                      background: 'var(--bg-sidebar)',
-                      color: 'var(--text-primary)',
-                      outline: 'none',
-                      fontSize: '13px',
-                      cursor: (isChatMode && activeChannelId) ? 'not-allowed' : 'pointer',
-                      opacity: (isChatMode && activeChannelId) ? 0.7 : 1,
-                    }}
-                  >
-                    <option value="all">{t('error') === 'Error' ? 'All Channels' : 'すべてのチャンネル'}</option>
-                    {channels.map((ch) => (
-                      <option key={ch.id} value={ch.id}>
-                        {ch.type === 'dm' ? `DM: ${ch.name}` : `# ${ch.name}`}
-                      </option>
-                    ))}
-                  </select>
+                  {/* チャンネル絞り込み (チャットモード時は特定のチャンネル固定となるため非表示) */}
+                  {!isChatMode && (
+                    <select
+                      value={selectedChannelId}
+                      onChange={(e) => setSelectedChannelId(e.target.value)}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-light)',
+                        background: 'var(--bg-sidebar)',
+                        color: 'var(--text-primary)',
+                        outline: 'none',
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="all">{t('error') === 'Error' ? 'All Channels' : 'すべてのチャンネル'}</option>
+                      {channels.map((ch) => (
+                        <option key={ch.id} value={ch.id}>
+                          {ch.type === 'dm' ? `DM: ${ch.name}` : `# ${ch.name}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
 
                   {/* タイプフィルターセレクト */}
                   <select
