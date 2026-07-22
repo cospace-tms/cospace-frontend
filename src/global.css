@@ -2348,17 +2348,23 @@ body {
    ⭐ チャンネル・DMお気に入りスターボタンの表示制御
    ========================================== */
 .channel-item .channel-star-btn {
-  opacity: 0;
+  opacity: 0.35;
   transition: opacity 0.2s ease, transform 0.1s ease;
 }
 
-.channel-item:hover .channel-star-btn {
-  opacity: 0.6;
-}
+@media (hover: hover) {
+  .channel-item .channel-star-btn {
+    opacity: 0;
+  }
 
-.channel-item .channel-star-btn:hover {
-  opacity: 1;
-  transform: scale(1.15);
+  .channel-item:hover .channel-star-btn {
+    opacity: 0.6;
+  }
+
+  .channel-item .channel-star-btn:hover {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 
 /* ==========================================

@@ -114,6 +114,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }));
   };
 
+  const closeMobileMenuIfNeeded = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setIsCollapsed(true);
+    }
+  };
+
   // ポップオーバー外クリック（Click Outside）検知用のRef
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -200,6 +206,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => {
                 setActiveView('inbox');
                 setActiveChannelId(null);
+                closeMobileMenuIfNeeded();
               }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'space-between', cursor: 'pointer', paddingLeft: isCollapsed ? '0' : '12px', paddingRight: isCollapsed ? '0' : '8px', position: 'relative' }}
             >
@@ -244,6 +251,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onClick={() => {
                 setActiveView('search');
                 setActiveChannelId(null);
+                closeMobileMenuIfNeeded();
               }}
               style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '8px', cursor: 'pointer', paddingLeft: isCollapsed ? '0' : '12px', paddingRight: isCollapsed ? '0' : '12px' }}
             >
@@ -297,7 +305,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
                   <select
                     value={activeWorkspaceId || ''}
-                    onChange={(e) => setActiveWorkspaceId(e.target.value)}
+                    onChange={(e) => {
+                      setActiveWorkspaceId(e.target.value);
+                      closeMobileMenuIfNeeded();
+                    }}
                     style={{
                       width: '100%',
                       padding: '8px 32px 8px 12px',
@@ -472,6 +483,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           setActiveView('workspace_doc');
                           setActiveChannelId(null);
                           setShowWorkspaceMenu(false);
+                          closeMobileMenuIfNeeded();
                         }}
                         style={{
                           background: activeView === 'workspace_doc' ? 'var(--bg-active)' : 'transparent',
@@ -495,6 +507,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           setActiveView('items');
                           setActiveChannelId(null);
                           setShowWorkspaceMenu(false);
+                          closeMobileMenuIfNeeded();
                         }}
                         style={{
                           background: activeView === 'items' ? 'var(--bg-active)' : 'transparent',
@@ -519,6 +532,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                             setActiveView('media');
                             setActiveChannelId(null);
                             setShowWorkspaceMenu(false);
+                            closeMobileMenuIfNeeded();
                           }}
                           style={{
                             background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
@@ -543,6 +557,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           onClick={() => {
                             onOpenWorkspaceMembers('members');
                             setShowWorkspaceMenu(false);
+                            closeMobileMenuIfNeeded();
                           }}
                           style={{
                             background: activeView === 'workspace_members' ? 'var(--bg-active)' : 'transparent',
@@ -599,6 +614,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           onClick={() => {
                             setActiveWorkspaceId(ws.id);
                             setShowWorkspaceMenu(false);
+                            closeMobileMenuIfNeeded();
                           }}
                           style={{
                             display: 'flex',
@@ -655,6 +671,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => {
                   setActiveView('workspace_doc');
                   setActiveChannelId(null);
+                  closeMobileMenuIfNeeded();
                 }}
                 className={`sidebar-icon-btn ${activeView === 'workspace_doc' ? 'active' : ''}`}
                 style={{
@@ -681,6 +698,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 onClick={() => {
                   setActiveView('items');
                   setActiveChannelId(null);
+                  closeMobileMenuIfNeeded();
                 }}
                 className={`sidebar-icon-btn ${activeView === 'items' ? 'active' : ''}`}
                 style={{
@@ -708,6 +726,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => {
                     setActiveView('media');
                     setActiveChannelId(null);
+                    closeMobileMenuIfNeeded();
                   }}
                   className={`sidebar-icon-btn ${activeView === 'media' ? 'active' : ''}`}
                   style={{
@@ -736,6 +755,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => {
                     setActiveView('workspace_members');
                     setActiveChannelId(null);
+                    closeMobileMenuIfNeeded();
                   }}
                   className={`sidebar-icon-btn ${activeView === 'workspace_members' ? 'active' : ''}`}
                   style={{
@@ -799,6 +819,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onClick={() => {
                         setActiveChannelId(channel.id);
                         setActiveView('chat');
+                        closeMobileMenuIfNeeded();
                       }}
                       style={{
                         display: 'flex',
@@ -961,6 +982,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     onClick={() => {
                       setActiveChannelId(channel.id);
                       setActiveView('chat');
+                      closeMobileMenuIfNeeded();
                     }}
                     style={{
                       display: 'flex',
@@ -1150,6 +1172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           onClick={() => {
                             setActiveChannelId(channel.id);
                             setActiveView('chat');
+                            closeMobileMenuIfNeeded();
                           }}
                           style={{
                             display: 'flex',
@@ -1336,6 +1359,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       onClick={() => {
                         setActiveChannelId(channel.id);
                         setActiveView('chat');
+                        closeMobileMenuIfNeeded();
                       }}
                       style={{
                         display: 'flex',
