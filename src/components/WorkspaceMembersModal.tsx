@@ -618,7 +618,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                         </span>
                       )}
 
-                      {modifiable && (
+                      {modifiable && !isSaasMode && (
                         <button onClick={() => handleResetPassword(member)} className="submit-btn" style={{ padding: '6px', borderRadius: '4px', background: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5', border: 'none', margin: 0, height: 'auto', display: 'flex', alignItems: 'center' }} title="一時パスワードを発行">
                           <Key size={14} />
                         </button>
