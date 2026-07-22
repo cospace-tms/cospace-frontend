@@ -1447,9 +1447,8 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                       emojiPalette={commonEmojis}
                     />
                   ))}
-              }
-              </>
-            )}
+                </>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
