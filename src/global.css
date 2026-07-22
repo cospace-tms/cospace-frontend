@@ -2775,3 +2775,53 @@ body {
     -webkit-app-region: no-drag;
   }
 }
+
+/* ==========================================================================
+   📱 Responsive Mobile Optimization & ♿ Accessibility Focus Ring
+   ========================================================================== */
+
+/* キーボードアクセシビリティ (focus-visible) の強化 */
+:focus-visible {
+  outline: 2px solid var(--accent-primary, #4f46e5) !important;
+  outline-offset: 2px !important;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent-primary, #4f46e5) !important;
+  outline-offset: 2px !important;
+}
+
+/* モバイルタッチデバイス (画面幅 768px 以下) でのレスポンシブ・タッチ最適化 */
+@media (max-width: 768px) {
+  /* ボタン類のタッチ有効領域 (38px〜44px) の確保 */
+  .chat-input-actions button,
+  .message-actions button,
+  .reaction-badge,
+  .action-btn {
+    min-height: 38px;
+    min-width: 38px;
+    touch-action: manipulation;
+  }
+
+  /* モーダルのモバイル全画面/レスポンシブサイズ化 */
+  .modal-container,
+  .modal-content {
+    max-width: 95vw !important;
+    width: 95vw !important;
+    max-height: 90vh !important;
+    margin: 10px auto !important;
+    border-radius: 12px !important;
+  }
+
+  /* 入力欄のフォントサイズ16px化（iOS Safariのフォーカス時自動ズーム防止） */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea {
+    font-size: 16px !important;
+  }
+}
