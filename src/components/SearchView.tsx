@@ -53,16 +53,31 @@ export const SearchView: React.FC<SearchViewProps> = ({
     }
   };
 
-  // カスタム絵文字テキスト置換関数
+  // カスタム絵文字テキスト置換関数（XSS属性注入防止）
   const replaceCustomEmojis = useCallback((htmlText: string) => {
     if (!htmlText || !customEmojis || customEmojis.length === 0) return htmlText;
+    const escapeAttr = (str: string) => (str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+
     let result = htmlText;
     customEmojis.forEach((emoji) => {
-      const escapedCode = emoji.code.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp(escapedCode, 'g');
+      const escapedCodeRegex = emoji.code.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(escapedCodeRegex, 'g');
+      const safeUrl = escapeAttr(emoji.url);
+      const safeCode = escapeAttr(emoji.code);
+
+      // javascript: スキーム等の危険なプロトコルを遮断
+      const cleanUrl = (safeUrl.trim().toLowerCase().startsWith('javascript:') || safeUrl.trim().toLowerCase().startsWith('data:'))
+        ? 'about:blank'
+        : safeUrl;
+
       result = result.replace(
         regex,
-        `<img src="${emoji.url}" alt="${emoji.code}" title="${emoji.code}" class="custom-emoji-inline" style="height: 20px; width: 20px; object-fit: contain; vertical-align: middle; margin: 0 2px;" />`
+        `<img src="${cleanUrl}" alt="${safeCode}" title="${safeCode}" class="custom-emoji-inline" style="height: 20px; width: 20px; object-fit: contain; vertical-align: middle; margin: 0 2px;" />`
       );
     });
     return result;
