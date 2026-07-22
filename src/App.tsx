@@ -134,14 +134,20 @@ function AppContent({ saas }: AppProps) {
     }
     setShowUpdateBanner(false);
 
-    // 新しいSWがアクティブになった段階でページをリロード
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      window.location.reload();
-    });
-    // controllerchangeが発火しない場合に備え1秒後に強制リロード
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    let reloaded = false;
+    const doReload = () => {
+      if (!reloaded) {
+        reloaded = true;
+        window.location.reload();
+      }
+    };
+
+    // 新しいSWがアクティブになった段階でページをリロード（一度だけ実行）
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('controllerchange', doReload, { once: true });
+    }
+    // controllerchangeが発火しない場合に備え1秒後に予備リロード
+    setTimeout(doReload, 1000);
   };
 
   // 1. 初期状態チェック (サイレントリフレッシュによるセッション復元 & セットアップ要否判定)
