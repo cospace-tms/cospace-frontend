@@ -8,6 +8,7 @@ import { DocumentPanel } from './DocumentPanel';
 import { ItemsArea } from './ItemsArea';
 import { MediaLibraryArea } from './MediaLibraryArea';
 import { AuthenticatedImage } from './AuthenticatedImage';
+import { ChatMessageItem } from './chat/ChatMessageItem';
 import { parseMarkdownToHtml } from '../utils/markdown';
 import { useLanguage } from '../utils/i18n';
 import Prism from 'prismjs';
@@ -151,13 +152,20 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
 
     // 各メンバーの displayName に合致するものを置換 (Lookaheadを使用することで日本語ユーザー名も正確に判定)
     workspaceMembers.forEach((m: any) => {
-      const name = m.displayName || m.email.split('@')[0];
+      const rawName = m.displayName || m.email.split('@')[0];
       const isMe = m.userId === currentUserId;
       const badgeClass = isMe ? 'mention-badge mention-me' : 'mention-badge';
       
-      const escapedName = name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp(`@${escapedName}(?=[\\s\\n<"']|$)`, 'g');
-      result = result.replace(regex, `<span class="${badgeClass}">@${name}</span>`);
+      const escapedRegexName = rawName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const safeName = rawName
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+      const regex = new RegExp(`@${escapedRegexName}(?=[\\s\\n<"']|$)`, 'g');
+      result = result.replace(regex, `<span class="${badgeClass}">@${safeName}</span>`);
     });
 
     return result;
@@ -1414,305 +1422,31 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
                       )}
                     </div>
                   )}
-                  {messages.map((msg) => {
-                  const isSelf = msg.userId === currentUserId;
-                  return (
-                    <div key={msg.id} id={`message-${msg.id}`} className={`message-card ${isSelf ? 'self' : ''} ${msg.isPinned ? 'pinned' : ''}`}>
-                      <div className="message-avatar">
-                        {msg.user.displayName.substring(0, 1).toUpperCase()}
-                      </div>
-                      <div className="message-content-wrapper">
-                        <div className="message-meta" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span className="message-sender">{msg.user.displayName}</span>
-                          <span className="message-time">{formatTime(msg.createdAt)}</span>
-                          {msg.isPinned && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '2px', fontSize: '10px', color: 'var(--accent-warning, #f59e0b)', fontWeight: 'bold' }}>
-                              <Pin size={10} fill="var(--accent-warning, #f59e0b)" />
-                              {isEn ? 'Pinned' : 'ピン留め済'}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* 引用返信（リプライ）の表示 */}
-                        {msg.parentMessage && (
-                          <div 
-                            className="reply-quote-preview" 
-                            onClick={() => scrollToMessage(msg.parentId!)}
-                            title={isEn ? 'Click to jump to the quoted message' : 'クリックして引用元メッセージに移動'}
-                          >
-                            <span className="reply-quote-sender">@{msg.parentMessage.userDisplayName}</span>
-                            <span className="reply-quote-content" dangerouslySetInnerHTML={{ __html: replaceMentions(replaceCustomEmojis(parseMarkdownToHtml(msg.parentMessage.content))) }}></span>
-                          </div>
-                        )}
-                        
-                        {/* メッセージ本文の吹き出し */}
-                        {msg.content && (
-                          <div 
-                            className={`message-bubble ${msg.status === 'sending' ? 'pending' : ''} markdown-body`}
-                            dangerouslySetInnerHTML={{ __html: replaceMentions(replaceCustomEmojis(parseMarkdownToHtml(msg.content))) }}
-                          />
-                        )}
-
-                        {/* 添付ファイルの表示 */}
-                        {msg.fileUrl && (
-                          <div className="message-attachment" style={{ marginTop: '6px' }}>
-                            {isImageFile(msg.fileName || '') ? (
-                              <div className="attachment-image-preview">
-                                <AuthenticatedImage 
-                                  src={msg.fileUrl} 
-                                  alt={msg.fileName || 'Attachment'} 
-                                  style={{ maxWidth: '300px', maxHeight: '200px', borderRadius: '8px', border: '1px solid var(--border-light)', cursor: 'pointer' }}
-                                  onClick={(_e, blobUrl) => window.open(blobUrl || getApiUrl(msg.fileUrl), '_blank')}
-                                />
-                              </div>
-                            ) : (
-                              <a 
-                                href={getApiUrl(msg.fileUrl)} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="attachment-file-link"
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: '6px', textDecoration: 'none', color: 'var(--text-primary)', fontSize: '13px' }}
-                              >
-                                <Paperclip size={16} />
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                  <span style={{ fontWeight: 500 }}>{msg.fileName}</span>
-                                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{formatFileSize(msg.fileSize || 0)}</span>
-                                </div>
-                              </a>
-                            )}
-                          </div>
-                        )}
-
-                        {/* ステータスインジケーター（楽観的UI） */}
-                        {msg.status === 'sending' && (
-                          <div className="status-indicator pending">
-                            <span>{isEn ? 'Sending...' : '送信中...'}</span>
-                          </div>
-                        )}
-
-                        {msg.status === 'failed' && (
-                          <div className="status-indicator failed">
-                            <AlertCircle size={12} />
-                            <span>{isEn ? 'Failed to send' : '送信に失敗しました'}</span>
-                            <button 
-                              className="retry-action-btn"
-                              onClick={() => onRetryMessage(msg.id)}
-                            >
-                              {isEn ? 'Retry' : '再試行'}
-                            </button>
-                            <button 
-                              className="delete-action-btn"
-                              onClick={() => onDeleteFailedMessage(msg.id)}
-                            >
-                              {isEn ? 'Delete' : '削除'}
-                            </button>
-                          </div>
-                        )}
-
-                        {/* リアクション一覧のバッジ表示 */}
-                        {msg.reactions && msg.reactions.length > 0 && (
-                          <div className="reactions-container" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
-                            {Object.entries(
-                              msg.reactions.reduce((acc, r) => {
-                                if (!acc[r.emoji]) acc[r.emoji] = [];
-                                acc[r.emoji].push(r.userId);
-                                return acc;
-                              }, {} as Record<string, string[]>)
-                            ).map(([emoji, userIds]) => {
-                              const hasReacted = userIds.includes(currentUserId);
-                              return (
-                                <button
-                                  key={emoji}
-                                  className={`reaction-badge ${hasReacted ? 'active' : ''}`}
-                                  onClick={() => !isSelf && onToggleReaction(msg.id, emoji)}
-                                  style={{ 
-                                    display: 'inline-flex', 
-                                    alignItems: 'center', 
-                                    gap: '4px', 
-                                    padding: '2px 8px', 
-                                    background: hasReacted ? 'rgba(14, 165, 233, 0.15)' : 'var(--bg-panel)', 
-                                    border: '1px solid', 
-                                    borderColor: hasReacted ? 'rgba(14, 165, 233, 0.4)' : 'var(--border-light)', 
-                                    borderRadius: '12px', 
-                                    fontSize: '11px', 
-                                    cursor: isSelf ? 'default' : 'pointer', 
-                                    color: hasReacted ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                    transition: 'all 0.1s ease',
-                                    opacity: isSelf ? 0.8 : 1
-                                  }}
-                                  title={isSelf 
-                                    ? (isEn ? `${userIds.length} user(s) reacted (You cannot react to your own message)` : `${userIds.length}人がリアクションしました（自分のメッセージにはリアクションできません）`) 
-                                    : (isEn ? `${userIds.length} user(s) reacted` : `${userIds.length}人がリアクションしました`)}
-                                  disabled={isSelf}
-                                >
-                                  {(() => {
-                                    const isCustom = emoji.startsWith(':') && emoji.endsWith(':');
-                                    if (isCustom && customEmojis) {
-                                      const matched = customEmojis.find(e => e.code === emoji);
-                                      if (matched) {
-                                        return <img src={matched.url} alt={emoji} style={{ height: '16px', width: '16px', objectFit: 'contain' }} />;
-                                      }
-                                    }
-                                    return <span>{emoji}</span>;
-                                  })()}
-                                  <span style={{ fontWeight: 600 }}>{userIds.length}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* メッセージアクション */}
-                        {msg.status === 'sent' && (
-                          <div className="message-actions" style={{ display: 'flex', gap: '6px', position: 'relative' }}>
-                            <button 
-                              className="message-actions-btn"
-                              onClick={() => onSetReplyTarget(msg)}
-                            >
-                              {isEn ? 'Reply' : '返信する'}
-                            </button>
-                            <button 
-                              className="message-actions-btn"
-                              onClick={() => handleAddItemFromMessage(msg, 'task')}
-                              title={isEn ? 'Register this message to task/schedule' : 'このメッセージをタスク・予定に登録'}
-                            >
-                              {isEn ? 'Add Task/Event' : 'タスク・予定追加'}
-                            </button>
-                            <button 
-                              className={`message-actions-btn ${msg.isPinned ? 'pinned' : ''}`}
-                              onClick={() => handleTogglePin(msg.id, !!msg.isPinned)}
-                              title={msg.isPinned ? (isEn ? 'Unpin message' : 'ピン留めを解除') : (isEn ? 'Pin message' : 'ピン留めする')}
-                              style={{ color: msg.isPinned ? 'var(--accent-warning, #f59e0b)' : 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              <Pin size={14} fill={msg.isPinned ? 'var(--accent-warning, #f59e0b)' : 'none'} />
-                            </button>
-
-                            {!isSelf && (
-                              <button 
-                                className="message-actions-btn"
-                                onClick={() => setShowEmojiPaletteMsgId(showEmojiPaletteMsgId === msg.id ? null : msg.id)}
-                                title={isEn ? 'Reaction' : 'リアクション'}
-                              >
-                                <Smile size={14} />
-                              </button>
-                            )}
-
-                            {showEmojiPaletteMsgId === msg.id && (
-                              <div 
-                                className="emoji-palette" 
-                                style={{ 
-                                  position: 'absolute', 
-                                  bottom: '100%', 
-                                  left: 0, 
-                                  zIndex: 10, 
-                                  display: 'flex', 
-                                  gap: '4px', 
-                                  padding: '6px', 
-                                  background: 'var(--bg-panel)', 
-                                  border: '1px solid var(--border-light)', 
-                                  borderRadius: '20px', 
-                                  boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)' 
-                                }}
-                              >
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                  {commonEmojis.map((emoji) => (
-                                    <button
-                                      key={emoji}
-                                      type="button"
-                                      className="emoji-btn"
-                                      onClick={async () => {
-                                        await onToggleReaction(msg.id, emoji);
-                                        setShowEmojiPaletteMsgId(null);
-                                      }}
-                                      style={{ background: 'none', border: 'none', fontSize: '16px', cursor: 'pointer', padding: '4px', transition: 'transform 0.1s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    >
-                                      {emoji}
-                                    </button>
-                                  ))}
-                                </div>
-
-                                {/* カスタム絵文字エリア */}
-                                <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: '6px' }}>
-                                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span>{isEn ? 'Custom Emojis' : 'カスタム絵文字'}</span>
-                                    {isEmojiAdmin && (
-                                      <button 
-                                        type="button"
-                                        onClick={() => setShowEmojiUploadForm(!showEmojiUploadForm)}
-                                        style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px', padding: 0 }}
-                                      >
-                                        <Plus size={10} />
-                                        {isEn ? 'Add' : '追加'}
-                                      </button>
-                                    )}
-                                  </div>
-
-                                  {showEmojiUploadForm ? (
-                                    <form onSubmit={handleUploadEmoji} style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--bg-main)', padding: '6px', borderRadius: '4px' }}>
-                                      <input 
-                                        type="text" 
-                                        placeholder=":code:" 
-                                        value={newEmojiCode} 
-                                        onChange={(e) => setNewEmojiCode(e.target.value)}
-                                        style={{ fontSize: '11px', padding: '2px 4px', background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: '3px', color: 'var(--text-primary)' }}
-                                        required
-                                      />
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                        <button 
-                                          type="button" 
-                                          onClick={() => emojiFileInputRef.current?.click()}
-                                          style={{ fontSize: '10px', padding: '2px 6px', background: 'var(--bg-active)', border: 'none', borderRadius: '3px', color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
-                                        >
-                                          <Upload size={10} />
-                                          {newEmojiFile ? newEmojiFile.name.substring(0, 10) : (isEn ? 'Choose' : '選択')}
-                                        </button>
-                                        <input 
-                                          type="file" 
-                                          ref={emojiFileInputRef} 
-                                          onChange={(e) => setNewEmojiFile(e.target.files?.[0] || null)}
-                                          accept="image/*"
-                                          style={{ display: 'none' }}
-                                        />
-                                        <button 
-                                          type="submit" 
-                                          disabled={uploadingEmoji}
-                                          style={{ fontSize: '10px', padding: '2px 6px', background: 'var(--accent-primary)', border: 'none', borderRadius: '3px', color: '#fff', cursor: 'pointer', marginLeft: 'auto' }}
-                                        >
-                                          {uploadingEmoji ? (isEn ? 'Uploading...' : '中...') : (isEn ? 'Save' : '保存')}
-                                        </button>
-                                      </div>
-                                    </form>
-                                  ) : (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '100px', overflowY: 'auto', padding: '2px' }}>
-                                      {customEmojis.length === 0 ? (
-                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{isEn ? 'No custom emojis' : 'なし'}</span>
-                                      ) : (
-                                        customEmojis.map((emoji) => (
-                                          <button
-                                            key={emoji.id}
-                                            type="button"
-                                            onClick={async () => {
-                                              await onToggleReaction(msg.id, emoji.code);
-                                              setShowEmojiPaletteMsgId(null);
-                                            }}
-                                            title={emoji.code}
-                                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                          >
-                                            <img src={emoji.url} alt={emoji.code} style={{ height: '20px', width: '20px', objectFit: 'contain' }} />
-                                          </button>
-                                        ))
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
+                  {messages.map((msg) => (
+                    <ChatMessageItem
+                      key={msg.id}
+                      msg={msg}
+                      currentUserId={currentUserId}
+                      isEn={isEn}
+                      onSetReplyTarget={onSetReplyTarget}
+                      onToggleReaction={onToggleReaction}
+                      handleTogglePin={handleTogglePin}
+                      handleAddItemFromMessage={handleAddItemFromMessage}
+                      onRetryMessage={onRetryMessage}
+                      onDeleteFailedMessage={onDeleteFailedMessage}
+                      scrollToMessage={scrollToMessage}
+                      replaceMentions={replaceMentions}
+                      replaceCustomEmojis={replaceCustomEmojis}
+                      parseMarkdownToHtml={parseMarkdownToHtml}
+                      formatTime={formatTime}
+                      formatFileSize={formatFileSize}
+                      isImageFile={isImageFile}
+                      showEmojiPaletteMsgId={showEmojiPaletteMsgId}
+                      setShowEmojiPaletteMsgId={setShowEmojiPaletteMsgId}
+                      customEmojis={customEmojis}
+                      emojiPalette={commonEmojis}
+                    />
+                  ))}
               }
               </>
             )}
