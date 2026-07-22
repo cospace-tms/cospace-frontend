@@ -302,6 +302,11 @@ export class ApiClient {
     channelUsed: number;
     dmEnabled?: boolean;
     mediaEnabled?: boolean;
+    allowedExtensions?: string;
+    maxFileSizeMb?: number;
+    forbiddenExtensions?: string;
+    msgRetentionDays?: number;
+    msgRetentionCount?: number;
   }> {
     const response = await this.get<{
       success: boolean;
@@ -316,6 +321,11 @@ export class ApiClient {
         channelUsed: number;
         dmEnabled?: boolean;
         mediaEnabled?: boolean;
+        allowedExtensions?: string;
+        maxFileSizeMb?: number;
+        forbiddenExtensions?: string;
+        msgRetentionDays?: number;
+        msgRetentionCount?: number;
       };
     }>(`/api/workspaces/${workspaceId}/subscription`);
     return response.data;

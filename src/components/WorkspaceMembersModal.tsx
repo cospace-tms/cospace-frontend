@@ -63,12 +63,20 @@ interface WorkspaceMembersModalProps {
   memberLimitMessage?: string;
   subscription?: {
     plan: string;
+    planName?: string;
     storageLimit: number;
     storageUsed: number;
     memberLimit: number;
     memberUsed: number;
     channelLimit: number;
     channelUsed: number;
+    dmEnabled?: boolean;
+    mediaEnabled?: boolean;
+    allowedExtensions?: string;
+    maxFileSizeMb?: number;
+    forbiddenExtensions?: string;
+    msgRetentionDays?: number;
+    msgRetentionCount?: number;
   } | null;
   fetchSubscription?: (wsId: string) => Promise<void>;
   isSaasMode?: boolean;
@@ -109,12 +117,12 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
 
   // タブ管理
   const [activeTab, setActiveTab] = useState<string>(
-    isMembersOnly ? (initialTab === 'groups' ? 'groups' : 'members') : (initialTab === 'smtp' ? 'smtp' : 'general')
+    isMembersOnly ? (initialTab === 'groups' ? 'groups' : 'members') : (initialTab || 'general')
   );
 
   useEffect(() => {
     if (initialTab) {
-      setActiveTab(isMembersOnly ? (initialTab === 'groups' ? 'groups' : 'members') : (initialTab === 'smtp' ? 'smtp' : 'general'));
+      setActiveTab(isMembersOnly ? (initialTab === 'groups' ? 'groups' : 'members') : initialTab);
     }
   }, [initialTab, isMembersOnly]);
 
@@ -632,9 +640,191 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
     );
   };
 
+  const renderSubscriptionTab = () => {
+    if (!subscription) {
+      return (
+        <div style={{ padding: '20px 0', color: 'var(--text-muted)', fontSize: '13px' }}>
+          {isEn ? 'Subscription information is unavailable.' : 'プラン情報を取得できませんでした。'}
+        </div>
+      );
+    }
 
+    const planDisplayName = subscription.planName || (subscription.plan === 'free' ? (isEn ? 'Free Plan' : '無料プラン') : subscription.plan);
+    const forbiddenExtsList = (subscription.forbiddenExtensions || "exe, bat, cmd, sh, php, cgi, pl, asp, aspx, jsp, html, htm, phtml, vbs, ps1, dll, scr")
+      .split(',')
+      .map(e => e.trim().toLowerCase().replace(/^\./, ''))
+      .filter(Boolean);
 
+    return (
+      <div className="subscription-tab-content" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="plan-badge-container" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <span className="plan-label">{isEn ? 'Current Plan:' : '現在のプラン:'}</span>
+          <span className="plan-badge free-badge">
+            {planDisplayName}
+          </span>
+        </div>
+        
+        <div style={{
+          padding: '12px 14px',
+          borderRadius: '8px',
+          background: 'rgba(14, 165, 233, 0.08)',
+          border: '1px solid rgba(14, 165, 233, 0.2)',
+          fontSize: '13px',
+          color: 'var(--text-primary)',
+          lineHeight: '1.5'
+        }}>
+          {isEn
+            ? 'Current plan limits are applied. To request limit increases or plan changes, please contact your system administrator.'
+            : '現在のプラン制限が適用されています。プランの制限変更や各種上限の緩和については、システム管理者までお問い合わせください。'}
+        </div>
 
+        {/* リソース使用率 */}
+        <div className="limit-metrics">
+          <h4 style={{ fontSize: '14px', fontWeight: 600, margin: '0 0 4px 0' }}>
+            {isEn ? 'Resource Usage' : 'リソース使用量'}
+          </h4>
+
+          {/* チャンネル制限 */}
+          <div className="metric-card">
+            <div className="metric-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span className="metric-name" style={{ fontWeight: 600, fontSize: '13px' }}>{isEn ? 'Channels' : 'チャンネル数'}</span>
+              <span className="metric-value" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{subscription.channelUsed} / {subscription.channelLimit}</span>
+            </div>
+            <div className="progress-bg" style={{ height: '8px', borderRadius: '4px', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+              <div 
+                className={`progress-fill ${subscription.channelUsed >= subscription.channelLimit ? 'danger' : subscription.channelUsed >= subscription.channelLimit * 0.8 ? 'warning' : 'normal'}`} 
+                style={{ 
+                  height: '100%', 
+                  borderRadius: '4px', 
+                  background: subscription.channelUsed >= subscription.channelLimit ? '#ef4444' : subscription.channelUsed >= subscription.channelLimit * 0.8 ? '#f59e0b' : 'var(--accent-primary, #0ea5e9)', 
+                  width: `${Math.min(100, (subscription.channelUsed / subscription.channelLimit) * 100)}%` 
+                }}
+              />
+            </div>
+            <span className="metric-help" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              {isEn ? 'Applies to public and private channels.' : 'DMを除いたパブリック/プライベートチャンネルが対象です。'}
+            </span>
+          </div>
+
+          {/* メンバー制限 */}
+          <div className="metric-card">
+            <div className="metric-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span className="metric-name" style={{ fontWeight: 600, fontSize: '13px' }}>{isEn ? 'Members' : 'メンバー数'}</span>
+              <span className="metric-value" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{subscription.memberUsed} / {subscription.memberLimit}</span>
+            </div>
+            <div className="progress-bg" style={{ height: '8px', borderRadius: '4px', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+              <div 
+                className={`progress-fill ${subscription.memberUsed >= subscription.memberLimit ? 'danger' : subscription.memberUsed >= subscription.memberLimit * 0.8 ? 'warning' : 'normal'}`} 
+                style={{ 
+                  height: '100%', 
+                  borderRadius: '4px', 
+                  background: subscription.memberUsed >= subscription.memberLimit ? '#ef4444' : subscription.memberUsed >= subscription.memberLimit * 0.8 ? '#f59e0b' : 'var(--accent-primary, #0ea5e9)', 
+                  width: `${Math.min(100, (subscription.memberUsed / subscription.memberLimit) * 100)}%` 
+                }}
+              />
+            </div>
+            <span className="metric-help" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              {isEn ? 'Maximum members allowed in this workspace.' : 'このワークスペースに参加できるメンバーの最大数です。'}
+            </span>
+          </div>
+
+          {/* ストレージ制限 */}
+          <div className="metric-card">
+            <div className="metric-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <span className="metric-name" style={{ fontWeight: 600, fontSize: '13px' }}>{isEn ? 'Storage Usage' : 'ストレージ使用量'}</span>
+              <span className="metric-value" style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                {(subscription.storageUsed / (1024 * 1024)).toFixed(2)} MB / {(subscription.storageLimit / (1024 * 1024)).toFixed(0)} MB
+              </span>
+            </div>
+            <div className="progress-bg" style={{ height: '8px', borderRadius: '4px', background: 'var(--bg-secondary)', overflow: 'hidden' }}>
+              <div 
+                className={`progress-fill ${subscription.storageUsed >= subscription.storageLimit ? 'danger' : subscription.storageUsed >= subscription.storageLimit * 0.8 ? 'warning' : 'normal'}`} 
+                style={{ 
+                  height: '100%', 
+                  borderRadius: '4px', 
+                  background: subscription.storageUsed >= subscription.storageLimit ? '#ef4444' : subscription.storageUsed >= subscription.storageLimit * 0.8 ? '#f59e0b' : 'var(--accent-primary, #0ea5e9)', 
+                  width: `${Math.min(100, (subscription.storageUsed / subscription.storageLimit) * 100)}%` 
+                }}
+              />
+            </div>
+            <span className="metric-help" style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              {isEn ? 'Total size of uploaded files.' : 'アップロードされたファイルの合計サイズです。'}
+            </span>
+          </div>
+        </div>
+
+        {/* ファイルアップロード仕様 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>
+            {isEn ? 'File Upload Restrictions' : 'ファイルアップロード仕様'}
+          </h4>
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{isEn ? 'Max File Size' : '1ファイル最大サイズ'}</span>
+              <span style={{ fontSize: '13px', fontWeight: 600 }}>{subscription.maxFileSizeMb || 100} MB</span>
+            </div>
+
+            {subscription.allowedExtensions ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{isEn ? 'Allowed File Extensions:' : '許可された拡張子:'}</span>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {subscription.allowedExtensions.split(',').map(ext => (
+                    <span key={ext} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                      .{ext.trim().replace(/^\./, '')}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{isEn ? 'Forbidden Extensions (Security Protection):' : '禁止されている拡張子 (セキュリティ保護):'}</span>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxHeight: '80px', overflowY: 'auto' }}>
+                {forbiddenExtsList.map(ext => (
+                  <span key={ext} style={{ fontSize: '11px', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                    .{ext}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 機能・ステート制限 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <h4 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>
+            {isEn ? 'Feature Status & History' : '機能ステート & 履歴制限'}
+          </h4>
+          <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-light)', borderRadius: '10px', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{isEn ? 'Direct Messages (DM)' : 'ダイレクトメッセージ (DM)'}</span>
+              <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', fontWeight: 600, background: subscription.dmEnabled !== false ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: subscription.dmEnabled !== false ? '#10b981' : '#ef4444' }}>
+                {subscription.dmEnabled !== false ? (isEn ? 'Enabled' : '利用可能') : (isEn ? 'Disabled' : '無効')}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{isEn ? 'Media Sharing' : 'メディア共有'}</span>
+              <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '12px', fontWeight: 600, background: subscription.mediaEnabled !== false ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)', color: subscription.mediaEnabled !== false ? '#10b981' : '#ef4444' }}>
+                {subscription.mediaEnabled !== false ? (isEn ? 'Enabled' : '利用可能') : (isEn ? 'Disabled' : '無効')}
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{isEn ? 'Message History Retention' : 'メッセージ履歴保持'}</span>
+              <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                {subscription.msgRetentionCount
+                  ? (isEn ? `Latest ${subscription.msgRetentionCount} msgs` : `最新 ${subscription.msgRetentionCount.toLocaleString()} 件`)
+                  : subscription.msgRetentionDays
+                  ? (isEn ? `Past ${subscription.msgRetentionDays} days` : `過去 ${subscription.msgRetentionDays} 日間`)
+                  : (isEn ? 'Unlimited' : '無制限')}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const settingsContent = (
     <div className={isEmbed ? "workspace-settings-embed" : "modal-content settings-modal"} style={isEmbed ? { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg-primary)', padding: '24px', overflowY: 'auto' } : { maxWidth: activeTab === 'groups' ? '750px' : '620px', width: 'calc(100% - 32px)', height: '560px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', transition: 'max-width 0.2s' }} onClick={(e) => e.stopPropagation()}>
@@ -676,6 +866,13 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
               </button>
             )}
 
+            {isOwner && (isSaasMode || subscription) && (
+              <button className={`tab-btn ${activeTab === 'subscription' ? 'active' : ''}`} onClick={() => setActiveTab('subscription')}>
+                <CreditCard size={16} />
+                <span>{isEn ? 'Plan Details' : 'プラン詳細'}</span>
+              </button>
+            )}
+
             {isOwner && !isSaasMode && (
               <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
                 <Mail size={16} />
@@ -700,6 +897,8 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
           renderMembersTab()
         ) : activeTab === 'general' ? (
           renderGeneralTab()
+        ) : activeTab === 'subscription' ? (
+          isOwner && renderSubscriptionTab()
         ) : activeTab === 'groups' ? (
           <WorkspaceGroupsTab workspaceId={workspace!.id} workspaceMembers={members} currentUserRole={currentUserRole} currentUserLedGroups={currentUserLedGroups} onRefreshMembers={loadMembers} />
         ) : activeTab === 'smtp' ? (
@@ -766,6 +965,13 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                   </button>
                 )}
 
+                {isOwner && (isSaasMode || subscription) && (
+                  <button className={`tab-btn ${activeTab === 'subscription' ? 'active' : ''}`} onClick={() => setActiveTab('subscription')}>
+                    <CreditCard size={16} />
+                    <span>{isEn ? 'Plan Details' : 'プラン詳細'}</span>
+                  </button>
+                )}
+
                 {isOwner && !isSaasMode && (
                   <button className={`tab-btn ${activeTab === 'smtp' ? 'active' : ''}`} onClick={() => setActiveTab('smtp')}>
                     <Mail size={16} />
@@ -788,6 +994,7 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
           <div style={{ flex: 1, padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0, boxSizing: 'border-box' }}>
             {activeTab === 'members' && renderMembersTab()}
             {activeTab === 'general' && renderGeneralTab()}
+            {activeTab === 'subscription' && isOwner && renderSubscriptionTab()}
             {activeTab === 'groups' && workspace && (
               <WorkspaceGroupsTab workspaceId={workspace.id} workspaceMembers={members} currentUserRole={currentUserRole} currentUserLedGroups={currentUserLedGroups} onRefreshMembers={loadMembers} />
             )}
