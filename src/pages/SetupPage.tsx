@@ -114,7 +114,7 @@ export const SetupPage: React.FC<SetupPageProps> = ({ onSetupComplete }) => {
     const element = document.createElement("a");
     const file = new Blob([
       `========================================\r\n`,
-      isEn ? `  Cohive Administrator Recovery Code\r\n` : `  Cohive 管理者 リカバリーコード\r\n`,
+      isEn ? `  CoHive Administrator Recovery Code\r\n` : `  CoHive 管理者 リカバリーコード\r\n`,
       `  Keep this file SECURE and CONFIDENTIAL!\r\n`,
       `========================================\r\n\r\n`,
       `Email Address: ${email}\r\n`,

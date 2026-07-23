@@ -809,7 +809,7 @@ export const ChatPage: React.FC<ChatPageProps> = ({
 
   // タブのタイトルを動的に更新（未読通知がある場合は件数を表示）
   useEffect(() => {
-    const defaultTitle = 'cohive';
+    const defaultTitle = 'CoHive';
     if (unreadNotificationsCount > 0) {
       document.title = `(${unreadNotificationsCount}) ${defaultTitle}`;
     } else {

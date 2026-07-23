@@ -6,6 +6,8 @@ import { LanguageProvider, useLanguage } from './utils/i18n';
 import { Loader, AlertTriangle } from 'lucide-react';
 import './global.css';
 import { updateThemeColorMeta } from './utils/theme';
+import { GlobalAnnouncementBanner } from './components/GlobalAnnouncementBanner';
+import { useBranding } from './utils/useBranding';
 
 export interface SaasExtensions {
   isSaasMode?: boolean;
@@ -48,6 +50,9 @@ function AppContent({ saas }: AppProps) {
   const [session, setSession] = useState<UserSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ワークスペース動的ブランディング（ロゴ・テーマカラー）
+  const branding = useBranding(session?.workspaceId || null);
 
   // SaaS管理者ポータル関連の状態 (saas Props から取得)
   const isSaasMode = saas?.isSaasMode ?? false;
@@ -1423,6 +1428,7 @@ function AppContent({ saas }: AppProps) {
   // 9. 通常チャット画面の表示
   return (
     <>
+      <GlobalAnnouncementBanner />
       <ChatPage
         currentUser={session}
         initialWorkspaceId={session.workspaceId}

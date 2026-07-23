@@ -21,7 +21,7 @@ export const translations = {
     "connection.retry": "再試行する",
 
     // ログイン画面 / Login
-    "login.title": "cohive ログイン",
+    "login.title": "CoHive ログイン",
     "login.subtitle": "セットアップ済みのユーザーアカウントでログインします。",
     "login.email": "メールアドレス",
     "login.password": "パスワード",
@@ -31,7 +31,7 @@ export const translations = {
     "login.goToRegister": "新規アカウント登録（サインアップ）はこちら",
 
     // 新規登録 / Signup
-    "register.title": "cohive アカウント登録",
+    "register.title": "CoHive アカウント登録",
     "register.subtitle": "メールアドレスとパスワードでアカウントを作成します。",
     "register.displayName": "表示名 (Display Name)",
     "register.email": "メールアドレス",
@@ -67,7 +67,7 @@ export const translations = {
     "recovery.backToLogin": "ログイン画面に戻る",
 
     // セットアップ画面 / Setup Page
-    "setup.title": "cohive セットアップ",
+    "setup.title": "CoHive セットアップ",
     "setup.subtitle": "最初の最高管理者 (Owner) とワークスペースを作成します。",
     "setup.displayName": "表示名 (Display Name)",
     "setup.email": "メールアドレス",
@@ -188,7 +188,7 @@ export const translations = {
     "connection.retry": "Retry",
 
     // ログイン画面 / Login
-    "login.title": "cohive Login",
+    "login.title": "CoHive Login",
     "login.subtitle": "Login with your configured user account.",
     "login.email": "Email Address",
     "login.password": "Password",
@@ -198,7 +198,7 @@ export const translations = {
     "login.goToRegister": "Need an account? Sign up here",
 
     // 新規登録 / Signup
-    "register.title": "cohive Sign Up",
+    "register.title": "CoHive Sign Up",
     "register.subtitle": "Create your account with email and password.",
     "register.displayName": "Display Name",
     "register.email": "Email Address",
@@ -234,7 +234,7 @@ export const translations = {
     "recovery.backToLogin": "Back to Login",
 
     // セットアップ画面 / Setup Page
-    "setup.title": "cohive Setup",
+    "setup.title": "CoHive Setup",
     "setup.subtitle": "Create the first owner account and workspace.",
     "setup.displayName": "Display Name",
     "setup.email": "Email Address",

@@ -644,7 +644,7 @@ export const useChatPageState = ({
 
   // タブのタイトルを動的に更新
   useEffect(() => {
-    const defaultTitle = 'cohive';
+    const defaultTitle = 'CoHive';
     if (unreadNotificationsCount > 0) {
       document.title = `(${unreadNotificationsCount}) ${defaultTitle}`;
     } else {

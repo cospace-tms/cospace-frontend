@@ -163,7 +163,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {!isCollapsed ? (
           <div style={{ padding: '0 16px 16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', marginBottom: '16px' }}>
             <span style={{ fontSize: '18px', fontWeight: 'bold', color: 'var(--text-primary)', letterSpacing: '0.5px' }}>
-              cohive
+              CoHive
             </span>
             <button
               className="input-icon-btn"
