@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, UserPlus, Shield, Trash2, Users, Sliders, Plus, Menu, Mail, Key, Loader, 
   ArrowUp, ArrowDown, Edit2, CreditCard, FileText, Download, AlertCircle, CheckCircle, ExternalLink,
-  MessageSquare
+  MessageSquare, RefreshCw
 } from 'lucide-react';
 import { WorkspaceGroupsTab } from './WorkspaceGroupsTab';
 import { SmtpSettingsTab } from './SmtpSettingsTab';
@@ -15,6 +15,7 @@ interface Member {
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  status?: 'active' | 'pending';
   role: 'owner' | 'group_admin' | 'member' | 'guest';
   groupIds?: string[];
   leaderGroupIds?: string[];
@@ -146,10 +147,40 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
   const [inviteGroupId, setInviteGroupId] = useState('');
   const [groups, setGroups] = useState<any[]>([]);
   const [addingMember, setAddingMember] = useState(false);
+  const [reinvitingUserId, setReinvitingUserId] = useState<string | null>(null);
 
   const isOwner = currentUserRole === 'owner';
   const isGroupAdmin = currentUserRole === 'group_admin';
   const canAccessSettings = isOwner || isGroupAdmin;
+
+  const handleReinviteMember = async (targetMember: Member) => {
+    if (!workspace) return;
+    if (!window.confirm(t('workspace.reinviteConfirm'))) return;
+
+    setReinvitingUserId(targetMember.userId);
+    try {
+      const res = await apiClient.post<{ success: boolean; tempPassword?: string; emailSent?: boolean; message?: string }>(
+        `/api/workspaces/${workspace.id}/members/${targetMember.userId}/reinvite`,
+        {}
+      );
+      if (res.success) {
+        if (res.tempPassword) {
+          setTempPassword(res.tempPassword);
+          setResettingUser(targetMember);
+        } else {
+          alert(t('workspace.reinviteSuccess'));
+        }
+        loadMembers();
+      } else {
+        alert((res as any).error || 'Failed to reinvite member');
+      }
+    } catch (err: any) {
+      console.error('Failed to reinvite member:', err);
+      alert(err.message || 'Failed to reinvite member');
+    } finally {
+      setReinvitingUserId(null);
+    }
+  };
 
   // メンバー一覧の取得
   const loadMembers = async () => {
@@ -536,7 +567,23 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                         )}
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 500 }}>{member.displayName}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 500 }}>{member.displayName}</span>
+                          {member.status === 'pending' && (
+                            <span style={{ 
+                              fontSize: '10px', 
+                              fontWeight: 600, 
+                              background: 'rgba(245, 158, 11, 0.15)', 
+                              color: '#d97706', 
+                              border: '1px solid rgba(245, 158, 11, 0.4)', 
+                              padding: '1px 6px', 
+                              borderRadius: '10px',
+                              lineHeight: '1.2'
+                            }}>
+                              {t('workspace.pending')}
+                            </span>
+                          )}
+                        </div>
                         <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{member.email}</span>
                         
                         {/* 所属グループ一覧表示 */}
@@ -571,6 +618,37 @@ export const WorkspaceMembersModal: React.FC<WorkspaceMembersModalProps> = ({
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {/* 再招待ボタン */}
+                      {member.status === 'pending' && canAccessSettings && (
+                        <button
+                          onClick={() => handleReinviteMember(member)}
+                          disabled={reinvitingUserId === member.userId}
+                          className="submit-btn"
+                          style={{
+                            padding: '5px 9px',
+                            borderRadius: '4px',
+                            background: 'rgba(79, 70, 229, 0.1)',
+                            color: '#4f46e5',
+                            border: '1px solid rgba(79, 70, 229, 0.2)',
+                            margin: 0,
+                            height: 'auto',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '11px',
+                            fontWeight: 500
+                          }}
+                          title={t('workspace.reinvite')}
+                        >
+                          {reinvitingUserId === member.userId ? (
+                            <Loader className="animate-spin" size={13} />
+                          ) : (
+                            <RefreshCw size={13} />
+                          )}
+                          <span>{t('workspace.reinvite')}</span>
+                        </button>
+                      )}
+
                       {/* DM開始ボタン */}
                       {member.userId !== apiClient.getUserId() && onCreateDm && (
                         <button 
