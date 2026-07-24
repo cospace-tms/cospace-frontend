@@ -273,13 +273,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </ul>
         )}
 
-        {/* ワークスペース切り替えセクション */}
+        {/* 統合型ワークスペースヘッダー ＆ 切替トグル */}
         <div className="sidebar-header" style={{ display: 'flex', flexDirection: 'column', gap: isCollapsed ? '12px' : '8px', alignItems: isCollapsed ? 'center' : 'stretch', padding: isCollapsed ? '16px 0 0' : '16px 16px 12px', borderTop: '1px solid var(--border-light)', borderBottom: 'none', marginBottom: '4px' }}>
           {!isCollapsed ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {/* 現在のワークスペース名 ＆ 設定ボタン */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {/* 統合ヘッダーバー (現在WS名 + 展開トグル + 設定アイコン) */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                {/* クリックでトグル開閉するメインエリア */}
+                <button
+                  type="button"
+                  onClick={() => setIsWsListExpanded(!isWsListExpanded)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    minWidth: 0,
+                    flex: 1,
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    textAlign: 'left',
+                    color: 'var(--text-primary)'
+                  }}
+                  title={t('error') === 'Error' ? 'Switch workspace' : 'ワークスペースを切り替え'}
+                >
                   <div style={{
                     width: '28px',
                     height: '28px',
@@ -295,14 +313,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }}>
                     {activeWorkspace?.name ? activeWorkspace.name.substring(0, 2).toUpperCase() : 'WS'}
                   </div>
-                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>
                     {activeWorkspace?.name || 'Workspace'}
                   </span>
-                </div>
-                
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', flexShrink: 0 }}>
+                    {(() => {
+                      const hasOtherUnread = workspaces.some((ws: any) => ws.id !== activeWorkspaceId && ws.unreadCount > 0);
+                      if (hasOtherUnread) {
+                        return (
+                          <span style={{
+                            width: '7px',
+                            height: '7px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--accent-danger)',
+                            display: 'inline-block'
+                          }} title="他のワークスペースに未読があります"></span>
+                        );
+                      }
+                      return null;
+                    })()}
+                    {isWsListExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  </div>
+                </button>
+
+                {/* 設定ボタン */}
                 {onOpenWorkspaceMembers && (currentUserRole === 'owner' || currentUserRole === 'group_admin') && (
                   <button
-                    onClick={() => onOpenWorkspaceMembers('general')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenWorkspaceMembers('general');
+                    }}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -313,7 +355,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      marginLeft: '4px'
                     }}
                     title={t('sidebar.settings')}
                   >
@@ -322,134 +365,129 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 )}
               </div>
 
-              {/* ワークスペース切り替え トグルヘッダー */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setIsWsListExpanded(!isWsListExpanded)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      cursor: 'pointer',
-                      color: 'var(--text-muted)',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
-                    }}
-                  >
-                    {isWsListExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                    <span>{t('error') === 'Error' ? 'Workspaces' : 'ワークスペース切り替え'}</span>
-                    {(() => {
-                      const hasOtherUnread = workspaces.some((ws: any) => ws.id !== activeWorkspaceId && ws.unreadCount > 0);
-                      if (hasOtherUnread) {
-                        return (
-                          <span style={{
-                            width: '6px',
-                            height: '6px',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--accent-danger)',
-                            display: 'inline-block',
-                            marginLeft: '2px'
-                          }} title="未読の更新があります"></span>
-                        );
-                      }
-                      return null;
-                    })()}
-                  </button>
+              {/* トグル展開時のワークスペース一覧 ＆ 新規作成ボタン */}
+              {isWsListExpanded && (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '2px',
+                  padding: '6px',
+                  background: 'var(--bg-panel, rgba(0,0,0,0.15))',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-light)',
+                  marginTop: '2px'
+                }}>
+                  <div style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 8px 2px', letterSpacing: '0.5px' }}>
+                    {t('error') === 'Error' ? 'Workspaces' : 'ワークスペース一覧'}
+                  </div>
 
+                  {workspaces.map((ws: any) => {
+                    const isActive = ws.id === activeWorkspaceId;
+                    const hasUnread = ws.unreadCount > 0;
+                    return (
+                      <div
+                        key={ws.id}
+                        onClick={() => {
+                          setActiveWorkspaceId(ws.id);
+                          setIsWsListExpanded(false);
+                          closeMobileMenuIfNeeded();
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '6px 8px',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          background: isActive ? 'rgba(var(--primary-color-rgb, 100, 108, 255), 0.15)' : 'transparent',
+                          color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
+                          fontWeight: isActive ? 'bold' : 'normal',
+                          fontSize: '13px',
+                          transition: 'background 0.15s'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) e.currentTarget.style.background = 'var(--bg-hover, rgba(255,255,255,0.05))';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                          <div style={{
+                            width: '22px',
+                            height: '22px',
+                            borderRadius: '4px',
+                            background: isActive ? 'var(--accent-primary)' : 'var(--border-light)',
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            flexShrink: 0
+                          }}>
+                            {ws.name ? ws.name.substring(0, 2).toUpperCase() : 'WS'}
+                          </div>
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {ws.name}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {hasUnread && (
+                            <span style={{
+                              background: 'var(--accent-danger)',
+                              color: '#fff',
+                              fontSize: '10px',
+                              padding: '2px 6px',
+                              borderRadius: '10px',
+                              fontWeight: 'bold'
+                            }}>
+                              {ws.unreadCount}
+                            </span>
+                          )}
+                          {isActive && <Check size={14} style={{ color: 'var(--accent-primary)' }} />}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* ワークスペース作成ボタン (トグル内最下部) */}
                   {currentUserRole !== 'guest' && (
                     <button
-                      className="input-icon-btn"
-                      title={t('sidebar.addWorkspace')}
-                      onClick={() => onOpenCreateWorkspace?.()}
-                      style={{ color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0 }}
+                      type="button"
+                      onClick={() => {
+                        setIsWsListExpanded(false);
+                        onOpenCreateWorkspace?.();
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '8px',
+                        marginTop: '4px',
+                        borderTop: '1px dashed var(--border-light)',
+                        background: 'none',
+                        borderLeft: 'none',
+                        borderRight: 'none',
+                        borderBottom: 'none',
+                        color: 'var(--accent-primary)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        borderRadius: '0 0 6px 6px',
+                        transition: 'opacity 0.15s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
                     >
                       <Plus size={14} />
+                      <span>{t('sidebar.addWorkspace')}</span>
                     </button>
                   )}
                 </div>
-
-                {/* トグル展開時のワークスペース一覧リスト */}
-                {isWsListExpanded && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '4px', marginTop: '2px' }}>
-                    {workspaces.map((ws: any) => {
-                      const isActive = ws.id === activeWorkspaceId;
-                      const hasUnread = ws.unreadCount > 0;
-                      return (
-                        <div
-                          key={ws.id}
-                          onClick={() => {
-                            setActiveWorkspaceId(ws.id);
-                            closeMobileMenuIfNeeded();
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '6px 10px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            background: isActive ? 'rgba(var(--primary-color-rgb, 100, 108, 255), 0.12)' : 'transparent',
-                            color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
-                            fontWeight: isActive ? 'bold' : 'normal',
-                            fontSize: '13px',
-                            transition: 'background 0.15s'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isActive) e.currentTarget.style.background = 'var(--bg-hover, rgba(255,255,255,0.05))';
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isActive) e.currentTarget.style.background = 'transparent';
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                            <div style={{
-                              width: '20px',
-                              height: '20px',
-                              borderRadius: '4px',
-                              background: isActive ? 'var(--accent-primary)' : 'var(--border-light)',
-                              color: '#fff',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                              fontWeight: 'bold',
-                              flexShrink: 0
-                            }}>
-                              {ws.name ? ws.name.substring(0, 2).toUpperCase() : 'WS'}
-                            </div>
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {ws.name}
-                            </span>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            {hasUnread && (
-                              <span style={{
-                                background: 'var(--accent-danger)',
-                                color: '#fff',
-                                fontSize: '10px',
-                                padding: '2px 6px',
-                                borderRadius: '10px',
-                                fontWeight: 'bold'
-                              }}>
-                                {ws.unreadCount}
-                              </span>
-                            )}
-                            {isActive && <Check size={14} style={{ color: 'var(--accent-primary)' }} />}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           ) : (
             <div ref={workspaceMenuRef} style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
@@ -738,70 +776,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="sidebar-scrollable-area">
           {/* ワークスペースメニュー（通常時アイコン横並び、最小化時縦並び） - ゲスト以外 */}
           {currentUserRole !== 'guest' && (!isCollapsed ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px', padding: '4px 16px 12px' }}>
-              {/* ドキュメント */}
-              <button
-                onClick={() => {
-                  setActiveView('workspace_doc');
-                  setActiveChannelId(null);
-                  closeMobileMenuIfNeeded();
-                }}
-                className={`sidebar-icon-btn ${activeView === 'workspace_doc' ? 'active' : ''}`}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: activeView === 'workspace_doc' ? 'var(--bg-active)' : 'transparent',
-                  border: '1px solid ' + (activeView === 'workspace_doc' ? 'var(--border-focus)' : 'var(--border-light)'),
-                  color: activeView === 'workspace_doc' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  outline: 'none',
-                }}
-                title={t('sidebar.workspaceDoc')}
-              >
-                <BookOpen size={18} />
-              </button>
-
-              {/* タスク */}
-              <button
-                onClick={() => {
-                  setActiveView('items');
-                  setActiveChannelId(null);
-                  closeMobileMenuIfNeeded();
-                }}
-                className={`sidebar-icon-btn ${activeView === 'items' ? 'active' : ''}`}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  background: activeView === 'items' ? 'var(--bg-active)' : 'transparent',
-                  border: '1px solid ' + (activeView === 'items' ? 'var(--border-focus)' : 'var(--border-light)'),
-                  color: activeView === 'items' ? 'var(--accent-primary)' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  outline: 'none',
-                }}
-                title={t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定'}
-              >
-                <CheckSquare size={18} />
-              </button>
-
-              {/* メディア */}
-              {subscription?.mediaEnabled !== false && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '4px 16px 12px' }}>
+              {/* アイコン横並び行 */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '4px' }}>
+                {/* ドキュメント */}
                 <button
                   onClick={() => {
-                    setActiveView('media');
+                    setActiveView('workspace_doc');
                     setActiveChannelId(null);
                     closeMobileMenuIfNeeded();
                   }}
-                  className={`sidebar-icon-btn ${activeView === 'media' ? 'active' : ''}`}
+                  className={`sidebar-icon-btn ${activeView === 'workspace_doc' ? 'active' : ''}`}
                   style={{
                     width: '36px',
                     height: '36px',
@@ -809,28 +794,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
-                    border: '1px solid ' + (activeView === 'media' ? 'var(--border-focus)' : 'var(--border-light)'),
-                    color: activeView === 'media' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                    background: activeView === 'workspace_doc' ? 'var(--bg-active)' : 'transparent',
+                    border: '1px solid ' + (activeView === 'workspace_doc' ? 'var(--border-focus)' : 'var(--border-light)'),
+                    color: activeView === 'workspace_doc' ? 'var(--accent-primary)' : 'var(--text-muted)',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     outline: 'none',
                   }}
-                  title={t('sidebar.mediaLibrary')}
+                  title={t('sidebar.workspaceDoc')}
                 >
-                  <Image size={18} />
+                  <BookOpen size={18} />
                 </button>
-              )}
 
-              {/* メンバー */}
-              {onOpenWorkspaceMembers && (
+                {/* タスク */}
                 <button
                   onClick={() => {
-                    setActiveView('workspace_members');
+                    setActiveView('items');
                     setActiveChannelId(null);
                     closeMobileMenuIfNeeded();
                   }}
-                  className={`sidebar-icon-btn ${activeView === 'workspace_members' ? 'active' : ''}`}
+                  className={`sidebar-icon-btn ${activeView === 'items' ? 'active' : ''}`}
                   style={{
                     width: '36px',
                     height: '36px',
@@ -838,24 +821,79 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: activeView === 'workspace_members' ? 'var(--bg-active)' : 'transparent',
-                    border: '1px solid ' + (activeView === 'workspace_members' ? 'var(--border-focus)' : 'var(--border-light)'),
-                    color: activeView === 'workspace_members' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                    background: activeView === 'items' ? 'var(--bg-active)' : 'transparent',
+                    border: '1px solid ' + (activeView === 'items' ? 'var(--border-focus)' : 'var(--border-light)'),
+                    color: activeView === 'items' ? 'var(--accent-primary)' : 'var(--text-muted)',
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     outline: 'none',
                   }}
-                  title={t('sidebar.members')}
+                  title={t('error') === 'Error' ? 'Tasks & Schedule' : 'タスク・予定'}
                 >
-                  <Users size={18} />
+                  <CheckSquare size={18} />
                 </button>
-              )}
 
+                {/* メディア */}
+                {subscription?.mediaEnabled !== false && (
+                  <button
+                    onClick={() => {
+                      setActiveView('media');
+                      setActiveChannelId(null);
+                      closeMobileMenuIfNeeded();
+                    }}
+                    className={`sidebar-icon-btn ${activeView === 'media' ? 'active' : ''}`}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: activeView === 'media' ? 'var(--bg-active)' : 'transparent',
+                      border: '1px solid ' + (activeView === 'media' ? 'var(--border-focus)' : 'var(--border-light)'),
+                      color: activeView === 'media' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                    }}
+                    title={t('sidebar.mediaLibrary')}
+                  >
+                    <Image size={18} />
+                  </button>
+                )}
+
+                {/* メンバー */}
+                {onOpenWorkspaceMembers && (
+                  <button
+                    onClick={() => {
+                      setActiveView('workspace_members');
+                      setActiveChannelId(null);
+                      closeMobileMenuIfNeeded();
+                    }}
+                    className={`sidebar-icon-btn ${activeView === 'workspace_members' ? 'active' : ''}`}
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: activeView === 'workspace_members' ? 'var(--bg-active)' : 'transparent',
+                      border: '1px solid ' + (activeView === 'workspace_members' ? 'var(--border-focus)' : 'var(--border-light)'),
+                      color: activeView === 'workspace_members' ? 'var(--accent-primary)' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      outline: 'none',
+                    }}
+                    title={t('sidebar.members')}
+                  >
+                    <Users size={18} />
+                  </button>
+                )}
+              </div>
 
             </div>
-          ) : (
-            null
-          ))}
+          ) : null)}
 
           {/* お気に入り（Starred）セクション */}
           {starredChannels.length > 0 && (
