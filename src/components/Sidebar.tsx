@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Hash, Plus, Settings, Inbox, User, LogOut, MoreHorizontal, Lock, MessageCircle, Globe, CheckSquare, ToggleLeft, ChevronRight, ChevronLeft, BookOpen, Image, Sun, Moon, Home, Menu, Star, Search, Users } from 'lucide-react';
+import { Hash, Plus, Settings, Inbox, User, LogOut, MoreHorizontal, Lock, MessageCircle, Globe, CheckSquare, ToggleLeft, ChevronRight, ChevronLeft, ChevronDown, BookOpen, Image, Sun, Moon, Home, Menu, Star, Search, Users, Check } from 'lucide-react';
 import { useLanguage } from '../utils/i18n';
 import { getApiUrl } from '../utils/apiUrl';
 
@@ -32,8 +32,8 @@ interface SidebarProps {
   channels: Channel[];
   activeChannelId: string | null;
   setActiveChannelId: (id: string | null) => void;
-  activeView: 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members';
-  setActiveView: (view: 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members') => void;
+  activeView: 'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members';
+  setActiveView: (view: 'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members') => void;
   unreadNotificationsCount: number;
   channelUnreads: Record<string, boolean>;
   currentUser: {
@@ -103,6 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceId);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
+  const [isWsListExpanded, setIsWsListExpanded] = useState(false);
   const [isChannelsExpanded, setIsChannelsExpanded] = useState(true);
   const [isDmsExpanded, setIsDmsExpanded] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
@@ -198,9 +199,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* グローバル機能 (ホーム、受信箱) - ゲスト以外 */}
         {currentUserRole !== 'guest' && (
           <ul className="channel-list" style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', padding: isCollapsed ? '0 4px' : '0 8px' }}>
-
-
-            {/* 受信箱 */}
+            {/* ダッシュボード */}
+            <li
+              className={`channel-item ${activeView === 'dashboard' ? 'active' : ''}`}
+              onClick={() => {
+                setActiveView('dashboard');
+                setActiveChannelId(null);
+                closeMobileMenuIfNeeded();
+              }}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: isCollapsed ? 'center' : 'flex-start', gap: '8px', cursor: 'pointer', paddingLeft: isCollapsed ? '0' : '12px', paddingRight: isCollapsed ? '0' : '8px' }}
+              title={t('error') === 'Error' ? 'Dashboard' : 'ダッシュボード'}
+            >
+              <Home size={16} style={{ flexShrink: 0 }} />
+              {!isCollapsed && <span style={{ fontWeight: 'bold' }}>{t('error') === 'Error' ? 'Dashboard' : 'ダッシュボード'}</span>}
+            </li>
             <li
               className={`channel-item ${activeView === 'inbox' ? 'active' : ''}`}
               onClick={() => {
@@ -264,98 +276,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* ワークスペース切り替えセクション */}
         <div className="sidebar-header" style={{ display: 'flex', flexDirection: 'column', gap: isCollapsed ? '12px' : '8px', alignItems: isCollapsed ? 'center' : 'stretch', padding: isCollapsed ? '16px 0 0' : '16px 16px 12px', borderTop: '1px solid var(--border-light)', borderBottom: 'none', marginBottom: '4px' }}>
           {!isCollapsed ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    {t('error') === 'Error' ? 'Workspaces' : 'ワークスペース'}
-                  </span>
-                  {subscription && subscription.plan !== 'unlimited' && (
-                    <span 
-                      onClick={() => onOpenWorkspaceMembers?.('subscription')}
-                      style={{
-                        fontSize: '9px',
-                        fontWeight: 'bold',
-                        padding: '2px 6px',
-                        borderRadius: '10px',
-                        background: 'rgba(14, 165, 233, 0.15)',
-                        color: 'var(--accent-primary, #0ea5e9)',
-                        border: '1px solid rgba(14, 165, 233, 0.3)',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                      }}
-                      title="プランと制限を確認"
-                    >
-                      {subscription.planName || (subscription.plan === 'free' ? '無料プラン' : subscription.plan)}
-                    </span>
-                  )}
-                </div>
-                {currentUserRole !== 'guest' && (
-                  <button
-                    className="input-icon-btn"
-                    title={t('sidebar.addWorkspace')}
-                    onClick={() => onOpenCreateWorkspace?.()}
-                    style={{ color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0 }}
-                  >
-                    <Plus size={14} />
-                  </button>
-                )}
-              </div>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
-                <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
-                  <select
-                    value={activeWorkspaceId || ''}
-                    onChange={(e) => {
-                      setActiveWorkspaceId(e.target.value);
-                      closeMobileMenuIfNeeded();
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '8px 32px 8px 12px',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      color: 'var(--text-primary)',
-                      background: 'var(--bg-secondary)',
-                      border: '1px solid var(--border-light)',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      appearance: 'none',
-                      outline: 'none',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {workspaces.map((ws: any) => (
-                      <option key={ws.id} value={ws.id}>
-                        {ws.name} {ws.unreadCount > 0 ? '🔴' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <div style={{ position: 'absolute', right: '12px', pointerEvents: 'none', display: 'flex', alignItems: 'center', color: 'var(--text-muted)', fontSize: '10px' }}>
-                    ▼
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* 現在のワークスペース名 ＆ 設定ボタン */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border-light)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, flex: 1 }}>
+                  <div style={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '6px',
+                    background: 'var(--accent-primary)',
+                    color: '#fff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    flexShrink: 0
+                  }}>
+                    {activeWorkspace?.name ? activeWorkspace.name.substring(0, 2).toUpperCase() : 'WS'}
                   </div>
-                  {(() => {
-                    const hasOtherUnread = workspaces.some((ws: any) => ws.id !== activeWorkspaceId && ws.unreadCount > 0);
-                    if (hasOtherUnread) {
-                      return (
-                        <span style={{
-                          position: 'absolute',
-                          top: '-4px',
-                          left: '-4px',
-                          width: '8px',
-                          height: '8px',
-                          borderRadius: '50%',
-                          backgroundColor: 'var(--accent-danger)',
-                          border: '1.5px solid var(--bg-sidebar)',
-                          boxShadow: '0 0 4px var(--accent-danger)'
-                        }}></span>
-                      );
-                    }
-                    return null;
-                  })()}
+                  <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    {activeWorkspace?.name || 'Workspace'}
+                  </span>
                 </div>
-
-                {/* ワークスペース設定ボタン（通常表示時） */}
+                
                 {onOpenWorkspaceMembers && (currentUserRole === 'owner' || currentUserRole === 'group_admin') && (
                   <button
                     onClick={() => onOpenWorkspaceMembers('general')}
@@ -364,8 +308,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       border: 'none',
                       color: 'var(--text-muted)',
                       cursor: 'pointer',
-                      padding: '6px',
-                      marginLeft: '8px',
+                      padding: '4px',
+                      borderRadius: '4px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -373,8 +317,137 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }}
                     title={t('sidebar.settings')}
                   >
-                    <Settings size={18} />
+                    <Settings size={16} />
                   </button>
+                )}
+              </div>
+
+              {/* ワークスペース切り替え トグルヘッダー */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setIsWsListExpanded(!isWsListExpanded)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px'
+                    }}
+                  >
+                    {isWsListExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    <span>{t('error') === 'Error' ? 'Workspaces' : 'ワークスペース切り替え'}</span>
+                    {(() => {
+                      const hasOtherUnread = workspaces.some((ws: any) => ws.id !== activeWorkspaceId && ws.unreadCount > 0);
+                      if (hasOtherUnread) {
+                        return (
+                          <span style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            backgroundColor: 'var(--accent-danger)',
+                            display: 'inline-block',
+                            marginLeft: '2px'
+                          }} title="未読の更新があります"></span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </button>
+
+                  {currentUserRole !== 'guest' && (
+                    <button
+                      className="input-icon-btn"
+                      title={t('sidebar.addWorkspace')}
+                      onClick={() => onOpenCreateWorkspace?.()}
+                      style={{ color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0 }}
+                    >
+                      <Plus size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* トグル展開時のワークスペース一覧リスト */}
+                {isWsListExpanded && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', paddingLeft: '4px', marginTop: '2px' }}>
+                    {workspaces.map((ws: any) => {
+                      const isActive = ws.id === activeWorkspaceId;
+                      const hasUnread = ws.unreadCount > 0;
+                      return (
+                        <div
+                          key={ws.id}
+                          onClick={() => {
+                            setActiveWorkspaceId(ws.id);
+                            closeMobileMenuIfNeeded();
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            background: isActive ? 'rgba(var(--primary-color-rgb, 100, 108, 255), 0.12)' : 'transparent',
+                            color: isActive ? 'var(--accent-primary)' : 'var(--text-primary)',
+                            fontWeight: isActive ? 'bold' : 'normal',
+                            fontSize: '13px',
+                            transition: 'background 0.15s'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isActive) e.currentTarget.style.background = 'var(--bg-hover, rgba(255,255,255,0.05))';
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isActive) e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                            <div style={{
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '4px',
+                              background: isActive ? 'var(--accent-primary)' : 'var(--border-light)',
+                              color: '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '10px',
+                              fontWeight: 'bold',
+                              flexShrink: 0
+                            }}>
+                              {ws.name ? ws.name.substring(0, 2).toUpperCase() : 'WS'}
+                            </div>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {ws.name}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {hasUnread && (
+                              <span style={{
+                                background: 'var(--accent-danger)',
+                                color: '#fff',
+                                fontSize: '10px',
+                                padding: '2px 6px',
+                                borderRadius: '10px',
+                                fontWeight: 'bold'
+                              }}>
+                                {ws.unreadCount}
+                              </span>
+                            )}
+                            {isActive && <Check size={14} style={{ color: 'var(--accent-primary)' }} />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>

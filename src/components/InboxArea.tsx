@@ -266,11 +266,34 @@ export const InboxArea: React.FC<InboxAreaProps> = ({
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      {notif.workspaceName && (
-                        <span style={{ fontSize: '11px', background: 'var(--accent-primary)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
-                          {notif.workspaceName}
-                        </span>
-                      )}
+                      {notif.workspaceName && (() => {
+                        // ワークスペースID/名からハッシュカラーを計算
+                        const str = notif.workspaceId || notif.workspaceName || '';
+                        let hash = 0;
+                        for (let i = 0; i < str.length; i++) {
+                          hash = str.charCodeAt(i) + ((hash << 5) - hash);
+                        }
+                        const h = Math.abs(hash) % 360;
+                        const isOtherWs = workspaceId && notif.workspaceId && workspaceId !== notif.workspaceId;
+
+                        return (
+                          <span style={{
+                            fontSize: '11px',
+                            background: `hsla(${h}, 65%, 45%, 0.25)`,
+                            border: `1px solid hsla(${h}, 65%, 55%, 0.45)`,
+                            color: `hsl(${h}, 80%, 75%)`,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontWeight: 'bold',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}>
+                            {isOtherWs && <span style={{ fontSize: '9px', opacity: 0.85 }}>●</span>}
+                            {notif.workspaceName}
+                          </span>
+                        );
+                      })()}
                       <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)', color: 'var(--text-muted)', padding: '2px 8px', borderRadius: '4px', fontWeight: 'bold' }}>
                         {getTypeLabel(notif.type)}
                       </span>

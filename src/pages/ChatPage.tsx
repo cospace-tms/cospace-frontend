@@ -92,16 +92,46 @@ export const ChatPage: React.FC<ChatPageProps> = ({
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(() => {
     return localStorage.getItem(`cohive_last_workspace_${currentUser.id}`) || initialWorkspaceId;
   });
-  const [activeView, setActiveView] = useState<'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members'>(() => {
+  const [activeView, setActiveView] = useState<'dashboard' | 'chat' | 'items' | 'inbox' | 'workspace_doc' | 'media' | 'workspace_settings' | 'search' | 'workspace_members'>(() => {
     const saved = localStorage.getItem(`cohive_last_view_${currentUser.id}`);
-    const validViews = ['chat', 'items', 'inbox', 'workspace_doc', 'media', 'workspace_settings', 'search', 'workspace_members'];
+    const validViews = ['dashboard', 'chat', 'items', 'inbox', 'workspace_doc', 'media', 'workspace_settings', 'search', 'workspace_members'];
     if (saved && validViews.includes(saved)) {
       return saved as any;
     }
-    return 'chat';
+    return 'dashboard';
   });
 
   // ダッシュボード用ステートと取得関数
+  const [dashboardTasks, setDashboardTasks] = useState<any[]>([]);
+  const [dashboardActivities, setDashboardActivities] = useState<any[]>([]);
+  const [loadingDashboard, setLoadingDashboard] = useState<boolean>(false);
+
+  const loadDashboardData = useCallback(async (silent = false) => {
+    if (currentUserRole === 'guest') return;
+    if (!silent) setLoadingDashboard(true);
+    try {
+      const [tasksRes, actRes] = await Promise.all([
+        apiClient.get<{ success: boolean; data: any[] }>('/api/items'),
+        apiClient.get<{ success: boolean; data: any[] }>('/api/activities'),
+      ]);
+      if (tasksRes?.success && Array.isArray(tasksRes.data)) {
+        setDashboardTasks(tasksRes.data);
+      }
+      if (actRes?.success && Array.isArray(actRes.data)) {
+        setDashboardActivities(actRes.data);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+    } finally {
+      if (!silent) setLoadingDashboard(false);
+    }
+  }, [currentUserRole]);
+
+  useEffect(() => {
+    if (activeView === 'dashboard') {
+      loadDashboardData(false);
+    }
+  }, [activeWorkspaceId, activeView, loadDashboardData]);
   // サブスクリプション制限情報ステート
   const [subscription, setSubscription] = useState<{
     plan: string;
@@ -1143,7 +1173,21 @@ export const ChatPage: React.FC<ChatPageProps> = ({
         )}
 
         {/* 中央エリアの条件付きレンダリング */}
-        {activeView === 'workspace_doc' ? (
+        {activeView === 'dashboard' ? (
+          <DashboardArea
+            currentUserId={currentUser.id}
+            workspaces={workspaces}
+            tasks={dashboardTasks}
+            activities={dashboardActivities}
+            loading={loadingDashboard}
+            onSelectWorkspace={(wsId) => {
+              setActiveWorkspaceId(wsId);
+              setActiveView('chat');
+            }}
+            onJumpToLink={handleJumpToLink}
+            onMenuClick={() => setIsCollapsed(false)}
+          />
+        ) : activeView === 'workspace_doc' ? (
           <div style={{ flex: 1, height: '100%', display: 'flex', minWidth: 0 }}>
             <DocumentPanel
               title={t('error') === 'Error' ? `${activeWorkspace?.name || 'Workspace'}'s Document` : `${activeWorkspace?.name || 'ワークスペース'} のドキュメント`}
