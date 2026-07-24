@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Loader } from 'lucide-react';
+import { Loader, AlertCircle } from 'lucide-react';
 import { Sidebar } from '../components/Sidebar';
 import { ChatArea } from '../components/ChatArea';
 import { ItemsArea } from '../components/ItemsArea';
@@ -462,12 +462,15 @@ export const ChatPage: React.FC<ChatPageProps> = ({
       try {
         const wsResponse = await apiClient.get<{ success: boolean; data: Workspace[] }>('/api/workspaces');
         if (wsResponse.success && Array.isArray(wsResponse.data)) {
-          setWorkspaces(wsResponse.data);
-          if (wsResponse.data.length > 0) {
-            const initialWsId = activeWorkspaceId || wsResponse.data[0].id;
-            setActiveWorkspaceId(initialWsId);
-            fetchUserRole(initialWsId);
+          const validWorkspaces = wsResponse.data.filter((w: any) => w.status !== 'suspended');
+          setWorkspaces(validWorkspaces);
+          if (validWorkspaces.length > 0) {
+            const exists = validWorkspaces.some((w: any) => w.id === activeWorkspaceId);
+            const targetWsId = exists && activeWorkspaceId ? activeWorkspaceId : validWorkspaces[0].id;
+            setActiveWorkspaceId(targetWsId);
+            fetchUserRole(targetWsId);
           } else {
+            setActiveWorkspaceId(null);
             setLoadingWorkspace(false);
           }
         } else {
@@ -1095,6 +1098,66 @@ export const ChatPage: React.FC<ChatPageProps> = ({
     return (
       <div className="setup-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-main, #0f172a)' }}>
         <Loader className="animate-spin" size={32} style={{ color: 'var(--accent-primary, #0ea5e9)' }} />
+      </div>
+    );
+  }
+
+  if (subscription?.status === 'suspended') {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        width: '100vw',
+        backgroundColor: '#0f172a',
+        color: '#fff',
+        padding: '24px',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{
+          background: 'rgba(30, 41, 59, 0.6)',
+          border: '1px solid rgba(239, 68, 68, 0.3)',
+          borderRadius: '16px',
+          padding: '40px 32px',
+          maxWidth: '500px',
+          width: '100%',
+          textAlign: 'center',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <div style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', padding: '16px', borderRadius: '50%', display: 'inline-flex' }}>
+              <AlertCircle size={36} />
+            </div>
+          </div>
+          <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 12px 0', color: '#fff' }}>
+            ワークスペース一時停止中
+          </h2>
+          <p style={{ fontSize: '14px', lineHeight: '1.6', color: '#9ca3af', margin: '0 0 24px 0' }}>
+            このワークスペース（{activeWorkspace?.name || '選択中'}）は管理者によって一時停止されています。チャット機能やファイルの参照・送信は制限されています。
+          </p>
+          {workspaces.filter(w => w.id !== activeWorkspaceId).length > 0 && (
+            <button
+              onClick={() => {
+                const other = workspaces.find(w => w.id !== activeWorkspaceId);
+                if (other) setActiveWorkspaceId(other.id);
+              }}
+              style={{
+                padding: '10px 20px',
+                background: '#0ea5e9',
+                border: 'none',
+                borderRadius: '8px',
+                color: '#fff',
+                fontWeight: 600,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              他のワークスペースに切り替える
+            </button>
+          )}
+        </div>
       </div>
     );
   }

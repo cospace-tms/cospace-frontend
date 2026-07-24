@@ -404,11 +404,15 @@ export const useChatPageState = ({
       try {
         const wsResponse = await apiClient.get<{ success: boolean; data: Workspace[] }>('/api/workspaces');
         if (wsResponse.success && Array.isArray(wsResponse.data)) {
-          setWorkspaces(wsResponse.data);
-          if (wsResponse.data.length > 0) {
-            const initialWsId = activeWorkspaceId || wsResponse.data[0].id;
-            setActiveWorkspaceId(initialWsId);
-            fetchUserRole(initialWsId);
+          const validWorkspaces = wsResponse.data.filter((w: any) => w.status !== 'suspended');
+          setWorkspaces(validWorkspaces);
+          if (validWorkspaces.length > 0) {
+            const exists = validWorkspaces.some((w: any) => w.id === activeWorkspaceId);
+            const targetWsId = exists && activeWorkspaceId ? activeWorkspaceId : validWorkspaces[0].id;
+            setActiveWorkspaceId(targetWsId);
+            fetchUserRole(targetWsId);
+          } else {
+            setActiveWorkspaceId(null);
           }
         }
       } catch (err) {

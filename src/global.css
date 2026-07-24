@@ -121,9 +121,8 @@ body {
 /* Layout Utilities */
 .app-container {
   display: flex;
-  height: 100vh;
-  height: 100dvh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   background: var(--bg-gradient);
 }
 
@@ -1759,7 +1758,7 @@ body {
 
   /* 2. サイドバーを左端に固定し、展開時は重ねてフロートさせる */
   .sidebar {
-    position: fixed !important;
+    position: absolute !important;
     top: 0;
     bottom: 0;
     left: 0;
@@ -1785,7 +1784,7 @@ body {
   /* 3. モバイル用オーバーレイ背景 */
   .mobile-sidebar-overlay {
     display: block;
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     right: 0;

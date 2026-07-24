@@ -294,6 +294,7 @@ export class ApiClient {
   async getWorkspaceSubscription(workspaceId: string): Promise<{
     plan: string;
     planName?: string;
+    status?: string;
     storageLimit: number;
     storageUsed: number;
     memberLimit: number;
@@ -313,6 +314,7 @@ export class ApiClient {
       data: {
         plan: string;
         planName?: string;
+        status?: string;
         storageLimit: number;
         storageUsed: number;
         memberLimit: number;

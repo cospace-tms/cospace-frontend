@@ -1427,16 +1427,18 @@ function AppContent({ saas }: AppProps) {
 
   // 9. 通常チャット画面の表示
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
       <GlobalAnnouncementBanner />
-      <ChatPage
-        currentUser={session}
-        initialWorkspaceId={session.workspaceId}
-        initialChannelId={session.defaultChannelId}
-        onLogout={handleLogout}
-        onUpdateUser={handleUpdateSession}
-        saas={saas}
-      />
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', width: '100%', overflow: 'hidden' }}>
+        <ChatPage
+          currentUser={session}
+          initialWorkspaceId={session.workspaceId}
+          initialChannelId={session.defaultChannelId}
+          onLogout={handleLogout}
+          onUpdateUser={handleUpdateSession}
+          saas={saas}
+        />
+      </div>
       {showUpdateBanner && (
         <div style={{
           position: 'fixed',
@@ -1494,7 +1496,7 @@ function AppContent({ saas }: AppProps) {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 
